@@ -11,16 +11,18 @@ from dataloader.dataset import Input_Dataset
 
 # Epoch, loss, optimizer
 class trainer:
-    def __init__(self, network, loss, optim, optim_param):
+    def __init__(self, network, loss, optim):
         self.network = network
         self.loss = loss
 
-        lr = optim_param['lr']
-        momentum = optim_param.get('momentum')
+        optimizer = optim['type']
+        lr = optim['lr']
+        momentum = optim.get('momentum')
+
         if momentum is None:
-            self.optim = optim(network.parameters(), lr=lr)
+            self.optim = optimizer(network.parameters(), lr=lr)
         else:
-            self.optim = optim(network.parameters(), lr=lr, momentum=momentum)
+            self.optim = optimizer(network.parameters(), lr=lr, momentum=momentum)
 
     def train(self, input_data, label, num_epochs=100, batch_size=16, print_every=10):
         dataset = Input_Dataset(input_data, label)

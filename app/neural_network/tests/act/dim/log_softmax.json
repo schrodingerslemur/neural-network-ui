@@ -1,0 +1,61 @@
+{
+    "mode": "train",
+    "num_net": 1,
+    "net1": {
+        "type": "mlp",
+        "dims": [
+            2,
+            256,
+            256,
+            256,
+            2
+        ],
+        "activations": [
+            [
+                "threshold",
+                0.1,
+                0,
+                "relu"
+            ],
+            [
+                "log_softmax",
+                0,
+                "threshold",
+                0.1,
+                0
+            ],
+            [
+                "threshold",
+                0.1,
+                0,
+                "log_softmax",
+                0,
+                "log_softmax",
+                0
+            ],
+            [
+                "threshold",
+                0.1,
+                0
+            ]
+        ]
+    },
+    "trainer": {
+        "loss": "mse",
+        "optim": {
+            "type": "adam",
+            "lr": 0.01
+        },
+        "num_epochs": 100
+    },
+    "data": {
+        "input": [
+            1,
+            2
+        ],
+        "label": [
+            2,
+            4
+        ]
+    }
+}

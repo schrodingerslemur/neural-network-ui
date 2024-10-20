@@ -19,3 +19,5 @@ hardswish = nn.Hardswish()            # Applies f(x) = x * ReLU6(x + 3) / 6
 mish = nn.Mish()                      # Applies mish activation: f(x) = x * tanh(softplus(x))
 tanhshrink = nn.Tanhshrink()          # Applies f(x) = x - tanh(x)
 threshold = nn.Threshold(0.1, 0)      # Threshold function, values below 0.1 set to 0
+
+['relu', 'prelu', 'selu', 'gelu', 'sigmoid', 'tanh', 'softplus', 'softsign', 'relu6', 'hardsigmoid', 'hardswich', 'mish', 'tanhshrink']

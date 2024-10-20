@@ -15,9 +15,15 @@ class MLPNet(nn.Module):
             activation = activations[i]
 
             layer_list.append(layer)
-            layer_list.append(activation)
+            if activation is not None:
+                if isinstance(activation, list):
+                    layer_list.extend(activation)
+                else:
+                    layer_list.append(activation)
 
         self.layers = nn.ModuleList(layer_list)
+
+        self.double()
         
     def forward(self, x):
         for layer in self.layers:

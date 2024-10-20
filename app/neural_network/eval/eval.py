@@ -17,24 +17,24 @@ def eval(network, cache_path, input, mode='cache'): # cache_path can be cache pa
         # Validate and load with strict mode to detect any mismatches
         try:
             network.load_state_dict(state_dict, strict=True)
-            print("Model loaded successfully! Parameters are compatible.")
+            print("model loaded successfully")
         except RuntimeError as e:
-            print(f"Error: {e}")
-            print("Mismatch detected in the model parameters.")
-            print("Attempting to load with strict=False for partial loading.")
+            print(f"error: {e}")
+            print("mismatch detected in the model parameters")
+            print("attempting to load with strict=False for partial loading")
             
             # Load with strict=False for partial compatibility
             incompatible_keys = network.load_state_dict(state_dict, strict=False)
-            print(f"Missing keys: {incompatible_keys.missing_keys}")
-            print(f"Unexpected keys: {incompatible_keys.unexpected_keys}")
+            print(f"missing keys: {incompatible_keys.missing_keys}")
+            print(f"unexpected keys: {incompatible_keys.unexpected_keys}")
             
             if not incompatible_keys.missing_keys and not incompatible_keys.unexpected_keys:
-                print("Partial load successful with no parameter mismatches!")
+                print("partial load successful with no parameter mismatches")
             else:
-                print("Some parameters could not be loaded due to architecture differences.")
+                print("some parameters could not be loaded due to architecture differences")
 
     else:
-        network.load_state_dict(torch.load(cache_path))
+        network.load_state_dict(torch.load(cache_path, weights_only=True))
 
     output = network(input)
     return output
