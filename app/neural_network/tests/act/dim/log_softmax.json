@@ -1,7 +1,46 @@
 {
     "mode": "train",
-    "num_net": 1,
+    "num_net": 2,
     "net1": {
+        "type": "mlp",
+        "dims": [
+            2,
+            256,
+            256,
+            256,
+            2
+        ],
+        "activations": [
+            [
+                "threshold",
+                0.1,
+                0,
+                "relu"
+            ],
+            [
+                "log_softmax",
+                0,
+                "threshold",
+                0.1,
+                0
+            ],
+            [
+                "threshold",
+                0.1,
+                0,
+                "log_softmax",
+                0,
+                "log_softmax",
+                0
+            ],
+            [
+                "threshold",
+                0.1,
+                0
+            ]
+        ]
+    },
+    "net2": {
         "type": "mlp",
         "dims": [
             2,

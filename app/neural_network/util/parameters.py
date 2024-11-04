@@ -10,71 +10,10 @@ class parse:
 
         output = {'output': encoded_output, 'pickled_data': encoded_pickled_data}
         dict_output = neural_dict | output
-        # print(dict_output)
-        try:
-            json.dumps(neural_dict)
-        except:
-            print(neural_dict)
-        print('dicttype', type(dict_output))
+
         json_output = json.dumps(dict_output)
 
         return json_output
-    
-    def dict_to_param(neural_dict, mode='train'):
-        assert mode in ['train', 'eval'], f"expected mode to be 'train' or 'eval', but got ({mode})"
-        def assert_not_none(*type_dicts):
-            for type_dict in type_dicts:
-                assert type_dict is not None, f'{type_dict} did not parse properly'
-
-        # Network parse
-        network_dict = neural_dict.get('network')
-        assert_not_none(network_dict)
-        dims = network_dict.get('dims')
-        activations = network_dict.get('activations')
-        assert_not_none(dims, activations)
-
-        # Trainer parse
-        trainer_dict = neural_dict.get('trainer')
-        assert_not_none(trainer_dict)
-
-        # Parameters parse
-        parameters_dict = trainer_dict.get('parameters')
-        assert_not_none(parameters_dict)
-        loss = parameters_dict.get('loss')
-        optim_dict = parameters_dict.get('optim')  
-        num_epochs = parameters_dict.get('num_epochs')
-        assert_not_none(loss, optim_dict, num_epochs)
-
-        # Data parse
-        data_dict = trainer_dict.get('data')
-        assert_not_none(data_dict)
-        input_data = data_dict.get('input')
-        label = data_dict.get('label')
-        assert_not_none(input_data, label)
-
-        if mode == 'eval':
-            pickle_file = network_dict.get('state')
-            assert_not_none(pickle_file)
-            return {
-            'dims': dims,
-            'activations': activations,
-            'loss': loss,
-            'optim_dict': optim_dict,
-            'num_epochs': num_epochs,
-            'input_data': input_data,
-            'label': label,
-            'state': pickle_file
-            }
-        
-        return {
-            'dims': dims,
-            'activations': activations,
-            'loss': loss,
-            'optim_dict': optim_dict,
-            'num_epochs': num_epochs,
-            'input_data': input_data,
-            'label': label,
-        }
     
 class convert:
     def lists(param, datatype):
@@ -158,8 +97,12 @@ class convert:
         for activation_input in activation_inputs:
             # If the activation input is not a list, it's a single activation
             if not isinstance(activation_input, list):
-                assert activation_input in convert.lists('activation', 'list'), f'{activation_input} is an invalid activation type'
-                converted_activations.append(convert.lists('activation', 'dict')[activation_input]())
+                print('input', activation_input)
+                assert activation_input in convert.lists('activation', 'list') or activation_input is None, f'{activation_input} is an invalid activation type'
+                if activation_input is None:
+                    converted_activations.append(None)
+                else:
+                    converted_activations.append(convert.lists('activation', 'dict')[activation_input]())
             else:
                 # Tuple handling: convert each element inside the tuple
                 tupled_inputs = []
@@ -168,8 +111,6 @@ class convert:
                     # If it is a string, it is an activation, not a parameter
                     if isinstance(element, str):
                         assert element in convert.lists('activation', 'list'), f'{element} is an invalid activation type'
-                        print(element)
-                        print(idx+1, len(activation_input))
                         if (element not in optional) or (idx+1 >= len(activation_input)) or (isinstance(activation_input[idx+1], str)):
                             tupled_inputs.append(convert.lists('activation', 'dict')[element]())
                         elif element in two_inputs:
@@ -197,8 +138,6 @@ class convert:
 
         return convert.lists('optimizer', 'dict')[optim]
     
-    def optimizer_parameter(optim_param):
-        optim = optim_param['type']
 
 class assertions:
     def dims(dims, activations): # Ensure len(dim) = len(activation) + 1
@@ -206,8 +145,18 @@ class assertions:
     
     def data(neural_dict, inputs, label): # Ensure input and label data has same dimensions as input and label dimensions
         num_net = neural_dict['num_net']
-        first_dim = neural_dict['net1']['dims'][0]
-        last_dim = neural_dict[f'net{num_net}']['dims'][-1]
+        first_net = neural_dict['net1']
+        last_net = neural_dict[f'net{num_net}']
+
+        if first_net == 'mlp':
+            first_dim = first_net['dims'][0]
+        elif first_net == 'cnn':
+            first_dim = first_net # NEED TO PUT HELPER FUNCTION TO CALCULATE based on last pooling and conv
+
+        if last_net == 'mlp':
+            last_dim = last_net['dims'][-1]
+        elif last_net == 'cnn':
+
         
         assert inputs.size(-1) == first_dim, f'input size ({inputs.size(-1)}) does not match first dim size ({first_dim})'
         assert label.size(-1) == last_dim, f'label size ({label.size(-1)}) does not match last dim size ({last_dim})'

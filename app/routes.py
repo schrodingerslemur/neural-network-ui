@@ -1,0 +1,1 @@
+# Relay information to neural-network in JSON

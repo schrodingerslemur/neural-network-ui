@@ -1,5 +1,7 @@
 import json
+import sys
 
+sys.path.append('../')
 from util.parameters import convert
 from net_main import main
 
@@ -10,7 +12,7 @@ losses = convert.lists('loss', 'list')
 non_opt = ['relu', 'prelu', 'selu', 'gelu', 'sigmoid', 'tanh', 'softplus', 'softsign', 'relu6', 'hardsigmoid', 'hardswish', 'mish', 'tanhshrink']
 optional = ['leaky_relu', 'elu',  'softshrink', 'threshold']
 two_inputs = ['hardtanh']
-dim_inputs = ['softmax', 'log_softmax']
+dim_inputs = ['log_softmax']
 
 # softmax and log_softmax [-1,0] range
 for act in dim_inputs:

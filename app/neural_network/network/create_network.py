@@ -2,6 +2,7 @@ import torch.nn as nn
 import copy
 
 from network.MLPnet import MLPNet
+from network.CNNnet import CNNNet
 # import created submodules
 from util.parameters import convert, parse, assertions
 
@@ -24,18 +25,48 @@ def create_network_list(neural_dict): # Return list of networks, repeated net_nu
 
 def create_network(network_dict):
     type = network_dict.get('type')
+    print(type)
+    assert type in ['mlp', 'cnn'], f"({type}) is not a valid network type"
+
+    if type == 'mlp':
+        network = create_mlp(network_dict)
+    elif type == 'cnn':
+        network = create_cnn(network_dict)
+    return network
+
+def create_mlp(network_dict):
     dims = network_dict.get('dims')
     activations = network_dict.get('activations')
 
-    assert type in ['mlp'], f"({type}) is not a valid network type"
     assertions.not_none(type, dims, activations)
     assertions.dims(dims, activations)
-    
+
     activations = convert.activation(activations)
 
-    if type == 'mlp':
-        network = MLPNet(dims, activations)
-    
+    network = MLPNet(dims, activations)
+
+    return network
+
+def create_cnn(network_dict):
+    # Example input
+#     "dims": [
+#     {"layer": "conv", "in_channels": 3, "out_channels": 16, "kernel_size": 3},
+#     {"layer": "pool", "kernel_size": 2, "stride": 2},  # Pooling layer
+#     {"layer": "conv", "in_channels": 16, "out_channels": 32, "kernel_size": 3},
+#     {"layer": "pool", "kernel_size": 2, "stride": 2}   # Pooling layer
+# ]
+#  'activations': ['relu', ['relu', 'relu'], ] # len(acitvations) = len(dims) 
+
+    dims = network_dict.get('dims')
+    activations = network_dict.get('activations')
+
+    assertions.not_none(dims, activations)
+
+    activations = convert.activation(activations)
+
+    # Layer logic
+    network = CNNNet(dims, activations)
+
     return network
 
 def get_train_dict(neural_dict):
