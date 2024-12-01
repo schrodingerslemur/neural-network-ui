@@ -12,6 +12,7 @@ class COMPnet(nn.Module):
 
     def forward(self, x):
         # Forward pass through each network sequentially
+        # if net in set of networks then add net, if not have special transforms
         for net in self.networks:
             x = net(x)
         return x

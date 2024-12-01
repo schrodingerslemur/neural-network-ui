@@ -75,7 +75,11 @@ class CNNNet(nn.Module):
         print('cnn layers', layers, type(layers))
         self.network = nn.ModuleList(layers)
 
+        self.double()
+
     def forward(self, x):
         for layer in self.network:
+            print(layer)
+            print(x.shape, 'shape')
             x = layer(x)
         return x

@@ -148,18 +148,41 @@ class assertions:
         first_net = neural_dict['net1']
         last_net = neural_dict[f'net{num_net}']
 
-        if first_net == 'mlp':
-            first_dim = first_net['dims'][0]
-        elif first_net == 'cnn':
-            first_dim = first_net # NEED TO PUT HELPER FUNCTION TO CALCULATE based on last pooling and conv
+        first_type = first_net['type']
+        last_type = last_net['type']
 
-        if last_net == 'mlp':
+        if first_type == 'mlp':
+            first_dim = first_net['dims'][0]
+        elif first_type == 'cnn':
+            first_dim = first_net['in_channels']
+
+        if last_type == 'mlp':
             last_dim = last_net['dims'][-1]
-        elif last_net == 'cnn':
+        elif last_type == 'cnn':
+            # Solve for last_dim: either pooling or convolution layers
+            last_dim = assertions.last_cnn(last_net)
 
         
         assert inputs.size(-1) == first_dim, f'input size ({inputs.size(-1)}) does not match first dim size ({first_dim})'
         assert label.size(-1) == last_dim, f'label size ({label.size(-1)}) does not match last dim size ({last_dim})'
+
+    def last_cnn(net):
+        last_layer = net['dims'][-1]
+
+        if last_layer['layer'] == 'conv':
+            output = last_layer['out_channels']
+        else:
+            kernel = last_layer['kernel_size']
+            stride = last_layer['stride']
+
+            second_last_layer = net['dims'][-2]
+            second_last_output = second_last_layer['out_channels']
+
+            output = ((second_last_output-kernel)/stride) + 1
+
+        return int(output)
+            
+
 
     def double(inputs, label): # Ensure input and label data type is double/float64
         assert inputs.dtype == torch.float64, f'inputs expected to be float64, but got {inputs.dtype}'

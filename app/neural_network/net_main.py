@@ -2,7 +2,9 @@ import torch
 import torch.nn as nn
 import pickle
 import json
+import sys
 
+sys.path.append('app/neural_network/')
 from trainer.trainer import trainer
 from eval.eval import eval
 from network.COMPnet import COMPnet
@@ -11,7 +13,7 @@ from util.data import data_convert
 from util.parameters import assertions, parse
 
 
-def main(json_string):
+def neural_main(json_string):
     neural_dict = json.loads(json_string)
     mode = neural_dict['mode']
     assert mode in ['train', 'eval'], f"Invalid mode: expected 'train' or 'eval', but got ({mode})"
@@ -87,7 +89,7 @@ if __name__ == "__main__":
         "num_net": 2,
         "net1": {
             "type": "mlp",
-            "dims": [2, 256, 256, 256, 2],
+            "dims": [32, 256, 256, 256, 2],
             "activations": [
                 ["threshold", 0.1, 0, "relu"],
                 ["threshold", 0.1, 0],
@@ -98,10 +100,7 @@ if __name__ == "__main__":
         "net2": {
             "type": "cnn",
             "dims": [
-                {"layer": "conv", "in_channels": 3, "out_channels": 16, "kernel_size": 3},
-                {"layer": "pool", "type": "avg", "kernel_size": 2, "stride": 2},  # Pooling layer
-                {"layer": "conv", "in_channels": 16, "out_channels": 32, "kernel_size": 3},
-                {"layer": "pool", "type": "max", "kernel_size": 2, "stride": 2}   # Pooling layer
+                {"layer": "conv", "in_channels": 2, "out_channels": 16, "kernel_size": 3}
                 ],
             "activations": ["relu", ["relu", "relu"], None, "selu"]
         },
@@ -111,13 +110,13 @@ if __name__ == "__main__":
             "num_epochs": 100
         },
         "data": {
-            "input": [1, 2],
-            "label": [2, 4]
+            "input": "torch.randn(1,2,32,32)",
+            "label": "torch.randn(1,32,5,16)"
         }
     }
 
     json_string_train = json.dumps(neural_dict_train)
-    output_train = main(json_string_train)
+    output_train = neural_main(json_string_train)
 
     # Example for evaluation
     # output_train_dict = json.loads(output_train)

@@ -32,18 +32,20 @@ def create_network(network_dict):
         network = create_mlp(network_dict)
     elif type == 'cnn':
         network = create_cnn(network_dict)
+        
     return network
 
 def create_mlp(network_dict):
     dims = network_dict.get('dims')
     activations = network_dict.get('activations')
+    transform = network_dict.get('transform')
 
     assertions.not_none(type, dims, activations)
     assertions.dims(dims, activations)
 
     activations = convert.activation(activations)
 
-    network = MLPNet(dims, activations)
+    network = MLPNet(dims, activations, transform=transform)
 
     return network
 
