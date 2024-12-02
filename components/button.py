@@ -1,14 +1,15 @@
 from cmu_graphics import *
 
 class circleButton:
-    def __init__(self, x, y, radius, func=None, param=None, text=None, url=None):
+    def __init__(self, x, y, radius, func=None, param=None, text=None, url=None, label=True):
         self.x = x
         self.y = y
         self.radius = radius
         self.text = text
         self.url = url
         self.func = func
-        self.param=param
+        self.param = param
+        self.label = label
     
     def draw(self):
         drawCircle(self.x, self.y, self.radius, fill='yellow', border='black')
@@ -16,8 +17,8 @@ class circleButton:
             drawLabel(self.text, self.x, self.y, align='center', bold=True, size=20)
         else:
             drawImage(self.url, self.x, self.y, width=self.radius*2-5, height=self.radius*2-5, align='center')
-        
-        drawLabel(self.text, self.x, self.y+self.radius+7, align='center', bold=True)
+        if self.label:
+            drawLabel(self.text, self.x, self.y+self.radius+7, align='center', bold=True)
 
     def contains(self, x, y):
         return distance(x,y,self.x,self.y) <= self.radius

@@ -12,9 +12,10 @@ class Counter:
         self.parameters = parameters
         self.index = index
         self.app = app
-    
+
+
     def draw(self):
-        current_count = self.parameters["dims"][self.index]  # Get count dynamically
+        current_count = self.parameters["dims"][self.index]
         drawCircle(self.x, self.y, 15, fill='grey', border='black')
         drawLabel(str(current_count), self.x, self.y)
         
@@ -45,13 +46,16 @@ class Counter:
         return inTriangle(x, y, *self.rightDims)
     
     def increase(self):
-        self.parameters["dims"][self.index] += 1  # Directly modify the value in parameters
+        self.parameters["dims"][self.index] += 1
         self.updateFigures()
 
     def decrease(self):
-        if self.parameters["dims"][self.index] > 0:  # Ensure count doesn't go negative
+        if self.parameters["dims"][self.index] > 0:
             self.parameters["dims"][self.index] -= 1
-            self.updateFigures()
+        if self.parameters["dims"][self.index] == 0:
+            del self.parameters["dims"][self.index]
+            del self.parameters["activations"][self.index]
+        self.updateFigures()
 
     def updateFigures(self):
         self.app.netFigures, self.app.netButtons, self.app.netDropdowns = mlpFigures(self.app, self.parameters)

@@ -49,3 +49,7 @@ def drawParameter(app):
     if app.selectedIcon:
         parameters = app.selectedIcon.parameters
     pass
+
+def drawDropdown(app):
+    for dropdown in app.dropdowns:
+        dropdown.draw()

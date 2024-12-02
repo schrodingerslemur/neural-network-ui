@@ -16,7 +16,8 @@ class trainer:
         self.loss = loss
 
         optimizer = optim['type']
-        lr = optim['lr']
+        lr = optim.get('lr')
+        lr = 0.001 if lr is None else lr
         momentum = optim.get('momentum')
 
         if momentum is None:
