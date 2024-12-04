@@ -1,10 +1,11 @@
 from cmu_graphics import *
 import json
+import base64
 import tkinter as tk
 from tkinter import filedialog
 
 from component_logic.create_logic import createBlocks, createButtons, createIcon
-from component_logic.draw_logic import drawPreview, drawHeader, drawBackground, drawBlocks, drawIcons, drawButtons, drawParameter, drawDropdown
+from component_logic.draw_logic import drawPreview, drawHeader, drawBackground, drawBlocks, drawIcons, drawButtons, drawDropdown, drawSelectedIcon, drawNetFigures, drawTrainWindow
 from component_logic.snap_logic import snapToBottom, snapToTop
 from component_logic.app_logic import resetApp
 
@@ -14,47 +15,100 @@ from components.icon import Icon, CompositeIcon
 from components.circle import Circle # Figures for MLP visualization
 from components.counter import Counter, mlpFigures, updateActivations
 
-from data.upload import uploadInput, uploadLabel
-from util.math_utils import distance, inTriangle
+from data.upload import uploadInput, uploadLabel, uploadModel, uploadEvalInput
+from util.bounds_utils import calculateWindowBounds
+from util.fix_utils import fixActivations
 
-from app.neural_network.util.parameters import convert
 from app.neural_network.net_main import neural_main
 
 def onAppStart(app):
     resetApp(app)
-    app.inputDF = None
-    app.labelDF = None
-    app.result = {"trainer": {"num_epochs": 10, "optim": {"type": None}, "loss": None}}
-    app.windowCloseButton = circleButton(0, 0, 20, text="X", func=closeWindow, param=app, label=False)
 
-    # upload buttons
-    app.inputUploadButton = circleButton(0, 0, 40, text="Upload input data", url='static/upload.webp', func=uploadInput, param=app, label=False)
-    app.labelUploadButton = circleButton(0, 0, 40, text="Upload label data", url='static/upload.webp', func=uploadLabel, param=app, label=False)
+    scale_x = app.width / 1366  # Scale factor for width
+    scale_y = app.height / 768  # Scale factor for height
 
-    # submit button
-    app.submitButton = circleButton(0, 0, 40, text="Submit", url='static/submit.png', func=submitTrain, param=app, label=False)
-    app.optimizerDropdown = dropdownButton(0, 0, 150, 30, options=app.optimizers, default_option=app.optimizers[0])
-    app.lossFunctionDropdown = dropdownButton(0, 0, 150, 30, options=app.losses, default_option=app.losses[0])
+    # Training dictionary
+    app.train_dict = {"trainer": {"num_epochs": 10, "optim": {"type": None}, "loss": None}}
+
+    # Train window close button
+    app.trainWindowCloseButton = circleButton(
+        int(0 * scale_x), int(0 * scale_y), int(20 * scale_x), 
+        text="X", func=closeTrainWindow, param=app, label=False
+    )
+
+    # Upload buttons
+    app.inputUploadButton = circleButton(
+        int(0 * scale_x), int(0 * scale_y), int(40 * scale_x),
+        text="Upload input data", url='static/upload.webp', func=uploadInput, param=app, label=False
+    )
+    app.labelUploadButton = circleButton(
+        int(0 * scale_x), int(0 * scale_y), int(40 * scale_x),
+        text="Upload label data", url='static/upload.webp', func=uploadLabel, param=app, label=False
+    )
+
+    # Submit button
+    app.trainSubmitButton = circleButton(
+        int(0 * scale_x), int(0 * scale_y), int(40 * scale_x),
+        text="Submit", url='static/submit.png', func=submitTrain, param=app, label=False
+    )
+
+    # Dropdowns
+    app.optimizerDropdown = dropdownButton(
+        int(0 * scale_x), int(0 * scale_y), int(150 * scale_x), int(30 * scale_y),
+        options=app.optimizers, default_option=app.optimizers[0]
+    )
+    app.lossFunctionDropdown = dropdownButton(
+        int(0 * scale_x), int(0 * scale_y), int(150 * scale_x), int(30 * scale_y),
+        options=app.losses, default_option=app.losses[0]
+    )
 
     # Num epochs input field
     app.numEpochsInput = "10"
     app.numEpochsSelected = False
     app.numEpochsCursorVisible = False  # To toggle the cursor
 
+    # To check whether input/label is uploaded
+    app.inputUploaded = False
+    app.labelUploaded = False
+
     # counter for cursor blinking
     app.counter = 0
 
     # window visibility
-    app.windowVisible = False
+    app.trainWindowVisible = False
 
+    # Eval Window stuff:
+    # Reuse inputUploadButton
+    app.model = None
+    app.eval_dict = {}
+    app.modelUploadButton = circleButton(
+        int(0 * scale_x), int(0 * scale_y), int(40 * scale_x),
+        text="Upload model", url='static/upload.webp', func=uploadModel, param=app, label=False
+    )
 
+    app.evalInputUploadButton = circleButton(
+        int(0 * scale_x), int(0 * scale_y), int(40 * scale_x),
+        text="Upload input data", url='static/upload.webp', func=uploadEvalInput, param=app, label=False
+    )
 
+    app.evalWindowCloseButton = circleButton(
+        int(0 * scale_x), int(0 * scale_y), int(20 * scale_x),
+        text="X", func=closeEvalWindow, param=app, label=False
+    )
+
+    app.evalSubmitButton = circleButton(
+        int(0 * scale_x), int(0 * scale_y), int(40 * scale_x),
+        text="Evaluate", url='static/submit.png', func=submitEval, param=app, label=False
+    )
+    app.evalWindowVisible = False
+    app.evalInputUploaded = False
+    app.modelUploaded = False
 
 def onMousePress(app, mouseX, mouseY):
-    if app.windowVisible:
+    if app.trainWindowVisible:
         # window interactions
-        if app.windowCloseButton.contains(mouseX, mouseY):
-            app.windowCloseButton.pressed()
+        if app.trainWindowCloseButton.contains(mouseX, mouseY):
+            app.trainWindowCloseButton.pressed()
             return
         elif app.inputUploadButton.contains(mouseX, mouseY):
             app.inputUploadButton.pressed()
@@ -62,10 +116,10 @@ def onMousePress(app, mouseX, mouseY):
         elif app.labelUploadButton.contains(mouseX, mouseY):
             app.labelUploadButton.pressed()
             return
-        elif app.submitButton.contains(mouseX, mouseY):
-            app.submitButton.pressed()
+        elif app.trainSubmitButton.contains(mouseX, mouseY):
+            app.trainSubmitButton.pressed()
             return
-
+        
         # Check if num_epochs field is clicked
         window_x, window_y, _, _ = calculateWindowBounds(app)
         num_epochs_x = window_x + 650
@@ -79,7 +133,7 @@ def onMousePress(app, mouseX, mouseY):
         selected_optimizer = app.optimizerDropdown.optionContains(mouseX, mouseY)
         if selected_optimizer:
             app.optimizerDropdown.selectOption(selected_optimizer)
-            app.result["trainer"]["optim"]["type"] = selected_optimizer
+            app.train_dict["trainer"]["optim"]["type"] = selected_optimizer
             return
         elif app.optimizerDropdown.contains(mouseX, mouseY):
             app.lossFunctionDropdown.close()
@@ -89,13 +143,27 @@ def onMousePress(app, mouseX, mouseY):
         selected_loss = app.lossFunctionDropdown.optionContains(mouseX, mouseY)
         if selected_loss:
             app.lossFunctionDropdown.selectOption(selected_loss)
-            app.result["trainer"]["loss"] = selected_loss
+            app.train_dict["trainer"]["loss"] = selected_loss
             return
         elif app.lossFunctionDropdown.contains(mouseX, mouseY):
             app.optimizerDropdown.close()
             app.lossFunctionDropdown.toggle()
             return
 
+    elif app.evalWindowVisible:
+        # Eval window interactions
+        if app.evalWindowCloseButton.contains(mouseX, mouseY):
+            app.evalWindowCloseButton.pressed()
+            return
+        elif app.evalInputUploadButton.contains(mouseX, mouseY):
+            app.evalInputUploadButton.pressed()
+            return
+        elif app.modelUploadButton.contains(mouseX, mouseY):
+            app.modelUploadButton.pressed()
+            return
+        elif app.evalSubmitButton.contains(mouseX, mouseY):
+            submitEval(app)  # Handle eval submission
+            return
     
     for button in app.buttons:
         if button.contains(mouseX, mouseY):
@@ -296,9 +364,9 @@ def onKeyPress(app, key):
         elif key == "backspace" and len(app.numEpochsInput) > 0:
             app.numEpochsInput = app.numEpochsInput[:-1] 
         
-        # Update the result
-        app.result["trainer"]["num_epochs"] = int(app.numEpochsInput) if app.numEpochsInput.isdigit() else 0
-        print(f"Num Epochs Updated: {app.result['trainer']['num_epochs']}")
+        # Update the train_dict
+        app.train_dict["trainer"]["num_epochs"] = int(app.numEpochsInput) if app.numEpochsInput.isdigit() else 0
+        print(f"Num Epochs Updated: {app.train_dict['trainer']['num_epochs']}")
 
 
 def onKeyRelease(app, key):
@@ -312,48 +380,38 @@ def onStep(app):
 
     if app.counter % 100 == 0:
         print(app.icons)
-        print(app.result)
+        if app.mode == 'train':
+            print(app.train_dict)
+        else:
+            print(app.eval_dict)
 
-    # Tcursor 
+    # blinking cursor 
     if app.counter % 15 == 0:
         app.numEpochsCursorVisible = not app.numEpochsCursorVisible
 
 def redrawAll(app):
     drawBackground(app)
     drawHeader(app)
+
+    # Drawing-board of screen
     if app.previewIcon:
         drawPreview(app.previewIcon)
     drawBlocks(app)
     drawButtons(app)
     drawIcons(app)
-   
 
-    drawRect(app.width-200, 100, 180, 40, align='center', fill=rgb(72,132,212), border='black')
-    drawLabel(app.selectedIcon, app.width - 200, 100, align='center', bold=True, size=25)
-    
+    # Right-side of screen
+    drawSelectedIcon(app)
     drawNetFigures(app)
     drawDropdown(app)
 
-    if app.windowVisible:
-        drawWindow(app)
+    # Screen window (when submit is pressed)
+    if app.trainWindowVisible:
+        drawTrainWindow(app)
+    
+    if app.evalWindowVisible:
+        drawEvalWindow(app)
 
-
-def drawNetFigures(app):
-    if app.selectedIcon:
-        parameters = app.selectedIcon.parameters
-        drawLabel(parameters, app.width-200, app.height-50, align='center')
-
-        for figure in app.netFigures:
-            figure.draw()
-        for button in app.netButtons:
-            button.draw()
-        for dropdown in app.netDropdowns:
-            if not dropdown.is_open:  # draw only closed dropdowns
-                dropdown.draw()
-
-        for dropdown in app.netDropdowns: # draw last
-            if dropdown.is_open:  # draw open dropdowns on top of everything else
-                dropdown.draw()
 
 def selectIcon(app, icon):
     app.selectedIcon = icon
@@ -362,111 +420,123 @@ def selectIcon(app, icon):
     else:
         app.netFigures, app.netButtons, app.netDropdowns = [], [], []
 
-
-def submitTrain(app):
-    print("Submit button pressed.")
-    print(app.result)
-    # sPAGGEHEti code:
-    app.result["net1"]["activations"].pop()
-    json_string = json.dumps(app.result)
-    pickle_data = neural_main(json_string)
-    # tkinter root window (hidden)
-    root = tk.Tk()
-    root.withdraw()  # Hide root window
-
-    # save location in file
-    save_path = filedialog.asksaveasfilename(
-        title="Save Pickle File",
-        defaultextension=".pkl",
-        filetypes=[("Pickle files", "*.pkl"), ("All files", "*.*")],
-    )
-
-    if save_path:
-        # save pickl to chosen file
-        with open(save_path, "wb") as f:
-            f.write(pickle_data)
-        print(f"Pickle file saved to {save_path}")
-    else:
-        print("Save operation canceled.")
-
-def closeWindow(app):
-    app.windowVisible = False
-
-def drawWindow(app):
+def drawEvalWindow(app):
+    """Draw the evaluation window with dynamic scaling."""
     window_x, window_y, window_width, window_height = calculateWindowBounds(app)
+
+    scale_x = app.width / 1366  # Scale factor for width
+    scale_y = app.height / 768  # Scale factor for height
 
     # Draw window background
     drawRect(window_x, window_y, window_width, window_height, fill='lightgrey', border='black')
 
     # Draw window close button
-    app.windowCloseButton.x = window_x + window_width - 30
-    app.windowCloseButton.y = window_y + 30
-    app.windowCloseButton.draw()
+    app.evalWindowCloseButton.x = window_x + window_width - int(30 * scale_x)
+    app.evalWindowCloseButton.y = window_y + int(30 * scale_y)
+    app.evalWindowCloseButton.draw()
 
-    # Upload buttons
-    app.inputUploadButton.x = window_x + 200
-    app.inputUploadButton.y = window_y + 150
-    app.inputUploadButton.draw()
+    # Input upload button
+    app.evalInputUploadButton.x = window_x + int(200 * scale_x)
+    app.evalInputUploadButton.y = window_y + int(150 * scale_y)
+    app.evalInputUploadButton.draw()
+    drawLabel("Upload input data",
+              app.evalInputUploadButton.x + int(90 * scale_x),
+              app.evalInputUploadButton.y,
+              align='left', size=int(30 * scale_y), bold=True)
 
-    drawLabel("Upload input data", app.inputUploadButton.x + 90, app.inputUploadButton.y, align='left', size=30, bold=True)
+    if app.evalInputUploaded:
+        drawImage('static/submit.png',
+                  app.evalInputUploadButton.x - int(100 * scale_x),
+                  app.evalInputUploadButton.y,
+                  width=int(30 * scale_x * 2) - 5,
+                  height=int(30 * scale_y * 2) - 5,
+                  align='center')
 
-    app.labelUploadButton.x = window_x + 200
-    app.labelUploadButton.y = window_y + 250
-    app.labelUploadButton.draw()
+    # Model upload button
+    app.modelUploadButton.x = window_x + int(200 * scale_x)
+    app.modelUploadButton.y = window_y + int(250 * scale_y)
+    app.modelUploadButton.draw()
+    drawLabel("Upload model",
+              app.modelUploadButton.x + int(90 * scale_x),
+              app.modelUploadButton.y,
+              align='left', size=int(30 * scale_y), bold=True)
 
-    drawLabel("Upload label data", app.labelUploadButton.x + 90, app.labelUploadButton.y, align='left', size=30, bold=True)
+    if app.modelUploaded:
+        drawImage('static/submit.png',
+                  app.modelUploadButton.x - int(100 * scale_x),
+                  app.modelUploadButton.y,
+                  width=int(30 * scale_x * 2) - 5,
+                  height=int(30 * scale_y * 2) - 5,
+                  align='center')
 
-    # Submit button
-    app.submitButton.x = window_x + 200
-    app.submitButton.y = window_y + 350
-    app.submitButton.draw()
-
-    drawLabel("Submit", app.submitButton.x + 90, app.submitButton.y, align='left', size=30, bold=True)
-
-    # Draw dropdowns (non-open dropdown first)
-    app.optimizerDropdown.x = app.inputUploadButton.x + 450
-    app.optimizerDropdown.y = app.inputUploadButton.y + 10
-    app.lossFunctionDropdown.x = app.labelUploadButton.x + 450
-    app.lossFunctionDropdown.y = app.labelUploadButton.y + 10
-
-    # Num epochs input field
-    num_epochs_x = window_x + 650
-    num_epochs_y = window_y + 350
-    drawRect(num_epochs_x, num_epochs_y, 150, 30, fill="white", border="black")
-    drawLabel(app.numEpochsInput, num_epochs_x + 10, num_epochs_y + 15, align="left", size=20)
-
-    # Blinking cursor
-    if app.numEpochsSelected and app.numEpochsCursorVisible:
-        cursor_x = num_epochs_x + 10 + len(app.numEpochsInput) * 10
-        drawLine(cursor_x, num_epochs_y + 5, cursor_x, num_epochs_y + 25, fill="black")
-    drawLabel("Num Epochs", num_epochs_x, num_epochs_y - 30, align="left", size=30, bold=True)
-
-    if app.optimizerDropdown.is_open:
-        app.lossFunctionDropdown.draw()
-        drawLabel("Loss Function", app.lossFunctionDropdown.x, app.lossFunctionDropdown.y - 30, align='left', size=30, bold=True)
-        drawLabel("Optimizer", app.optimizerDropdown.x, app.optimizerDropdown.y - 30, align='left', size=30, bold=True)
-        app.optimizerDropdown.draw()
-    elif app.lossFunctionDropdown.is_open:
-        app.optimizerDropdown.draw()
-        drawLabel("Optimizer", app.optimizerDropdown.x, app.optimizerDropdown.y - 30, align='left', size=30, bold=True)
-        drawLabel("Loss Function", app.lossFunctionDropdown.x, app.lossFunctionDropdown.y - 30, align='left', size=30, bold=True)
-        app.lossFunctionDropdown.draw()
-    else:
-        app.optimizerDropdown.draw()
-        app.lossFunctionDropdown.draw()
-        drawLabel("Optimizer", app.optimizerDropdown.x, app.optimizerDropdown.y - 30, align='left', size=30, bold=True)
-        drawLabel("Loss Function", app.lossFunctionDropdown.x, app.lossFunctionDropdown.y - 30, align='left', size=30, bold=True)
+    # Eval submit button
+    app.evalSubmitButton.x = window_x + int(200 * scale_x)
+    app.evalSubmitButton.y = window_y + int(350 * scale_y)
+    app.evalSubmitButton.draw()
+    drawLabel("Submit",
+              app.evalSubmitButton.x + int(90 * scale_x),
+              app.evalSubmitButton.y,
+              align='left', size=int(30 * scale_y), bold=True)
 
 
+def submitTrain(app):
+    print("Submit train button pressed.")
 
-def calculateWindowBounds(app):
-    window_width = int(app.width * 0.7)
-    window_height = int(app.height * 0.7)
-    window_x = (app.width - window_width) // 2
-    window_y = (app.height - window_height) // 2
-    return window_x, window_y, window_width, window_height
+    # Train model
+    try:
+        fixActivations(app)
+        json_string = json.dumps(app.train_dict)
+        train_output = neural_main(json_string)
+        train_output = json.loads(train_output)
+        encoded_pickle_data = train_output['pickled_data']
+        pickle_data = base64.b64decode(encoded_pickle_data)
 
+        # tkinter root window (hidden)
+        root = tk.Tk()
+        root.withdraw()  # Hide root window
+
+        # save location in file
+        save_path = filedialog.asksaveasfilename(
+            title="Save Pickle File",
+            defaultextension=".pkl",
+            filetypes=[("Pickle files", "*.pkl"), ("All files", "*.*")],
+        )
+
+        if save_path:
+            # save pickl to chosen file
+            with open(save_path, "wb") as f:
+                f.write(pickle_data)
+            print(f"Pickle file saved to {save_path}")
+            app.showMessage(f"Pickle file saved to {save_path}")
+        else:
+            print("Save operation canceled.")
+            app.showMessage("Save operation canceled.")
+
+    except Exception as e:
+        app.showMessage(f"An error occured: ({e})")
+        print(e)
+
+def submitEval(app):
+    print("Submit eval button pressed")
+
+
+    fixActivations(app)
+    print('eval_dict', app.eval_dict)
+    json_string = json.dumps(app.eval_dict)
+    eval_output = neural_main(json_string)
+    print(eval_output)
+    app.showMessage('evaluation success BORATTTTTTTTTTTTT')
+    # except Exception as e:
+    #     app.showMessage(f"An error occured: ({e})")
+    #     print(e)
     
+    
+def closeTrainWindow(app):
+    app.trainWindowVisible = False
+
+def closeEvalWindow(app):
+    app.evalWindowVisible = False
+
 def main():
     runApp()
 

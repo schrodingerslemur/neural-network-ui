@@ -61,13 +61,18 @@ class Counter:
         self.app.netFigures, self.app.netButtons, self.app.netDropdowns = mlpFigures(self.app, self.parameters)
 
 def mlpFigures(app, parameters):
-    center_x, start_y, row_width = 1100, 150, 200  # Center x, start y, total row width
+    # Dynamically scale values based on app dimensions
+    scale_x = app.width / 1366  # Scale factor for width
+    scale_y = app.height / 768  # Scale factor for height
+
+    center_x = app.width-200 - scale_x*60  # Center x
+    start_y = int(150 * scale_y) + 30  # Start y
+    row_width = int(200 * scale_x)  # Total row width
     max_circles = 20  # Maximum number of circles in a row
-    r = 10  # Default radius
+    r = int(10 * scale_y)  # Scaled radius
     figures = []  # List to store circles
     buttons = []
     dropdowns = []
-
 
     for i in range(len(parameters["dims"])):  # Iterate over the rows defined by dims
         dim = parameters["dims"][i]
@@ -86,21 +91,25 @@ def mlpFigures(app, parameters):
             figures.append(figure)  # Add circle to the list
             x += space  # Move x for the next circle
 
-        button = Counter(center_x + row_width//2 + 100, start_y, parameters, i, app)
+        button_x = center_x + row_width // 2 + int(100 * scale_x)
+        button = Counter(button_x, start_y, parameters, i, app)
         buttons.append(button)
 
-        mid_y = start_y + 2*r 
-        dropdown = dropdownButton(center_x + 90 , mid_y, 70, 22, options=[None]+app.activations)
+        dropdown_x = center_x + int(90 * scale_x)
+        dropdown_y = start_y + int(2 * r)
+        dropdown = dropdownButton(dropdown_x, dropdown_y, int(70 * scale_x), int(22 * scale_y), options=[None] + app.activations)
         dropdown.selected_option = parameters["activations"][i]  # Sync with existing parameter
         dropdowns.append(dropdown)
 
-        start_y += 2 * r + 50  # Move to the next row
+        start_y += int(2 * r + 50 * scale_y)  # Move to the next row
 
-    add_row_button_y = start_y + 20
-    add_row_button = circleButton(center_x + row_width//2 + 100, add_row_button_y, 30, text="Add layer",url='static/add.png', func=addRow, param=app)
+    add_row_button_x = center_x + row_width // 2 + int(100 * scale_x)
+    add_row_button_y = start_y + int(20 * scale_y)
+    add_row_button = circleButton(add_row_button_x, add_row_button_y, int(30 * scale_x), text="Add layer", url='static/add.png', func=addRow, param=app)
     buttons.append(add_row_button)
 
     return figures, buttons, dropdowns
+
 
 def addRow(app):
     """
