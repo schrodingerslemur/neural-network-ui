@@ -224,6 +224,65 @@ def drawTrainWindow(app):
             bold=True
         )
 
+def drawEvalWindow(app):
+    """Draw the evaluation window with dynamic scaling."""
+    window_x, window_y, window_width, window_height = calculateWindowBounds(app)
+
+    scale_x = app.width / 1366  # Scale factor for width
+    scale_y = app.height / 768  # Scale factor for height
+
+    # Draw window background
+    drawRect(window_x, window_y, window_width, window_height, fill='lightgrey', border='black')
+
+    # Draw window close button
+    app.evalWindowCloseButton.x = window_x + window_width - int(30 * scale_x)
+    app.evalWindowCloseButton.y = window_y + int(30 * scale_y)
+    app.evalWindowCloseButton.draw()
+
+    # Input upload button
+    app.evalInputUploadButton.x = window_x + int(200 * scale_x)
+    app.evalInputUploadButton.y = window_y + int(150 * scale_y)
+    app.evalInputUploadButton.draw()
+    drawLabel("Upload input data",
+              app.evalInputUploadButton.x + int(90 * scale_x),
+              app.evalInputUploadButton.y,
+              align='left', size=int(30 * scale_y), bold=True)
+
+    if app.evalInputUploaded:
+        drawImage('static/submit.png',
+                  app.evalInputUploadButton.x - int(100 * scale_x),
+                  app.evalInputUploadButton.y,
+                  width=int(30 * scale_x * 2) - 5,
+                  height=int(30 * scale_y * 2) - 5,
+                  align='center')
+
+    # Model upload button
+    app.modelUploadButton.x = window_x + int(200 * scale_x)
+    app.modelUploadButton.y = window_y + int(250 * scale_y)
+    app.modelUploadButton.draw()
+    drawLabel("Upload model",
+              app.modelUploadButton.x + int(90 * scale_x),
+              app.modelUploadButton.y,
+              align='left', size=int(30 * scale_y), bold=True)
+
+    if app.modelUploaded:
+        drawImage('static/submit.png',
+                  app.modelUploadButton.x - int(100 * scale_x),
+                  app.modelUploadButton.y,
+                  width=int(30 * scale_x * 2) - 5,
+                  height=int(30 * scale_y * 2) - 5,
+                  align='center')
+
+    # Eval submit button
+    app.evalSubmitButton.x = window_x + int(200 * scale_x)
+    app.evalSubmitButton.y = window_y + int(350 * scale_y)
+    app.evalSubmitButton.draw()
+    drawLabel("Submit",
+              app.evalSubmitButton.x + int(90 * scale_x),
+              app.evalSubmitButton.y,
+              align='left', size=int(30 * scale_y), bold=True)
+
+
 def drawNetFigures(app):
     if app.selectedIcon:
         parameters = app.selectedIcon.parameters
@@ -239,3 +298,4 @@ def drawNetFigures(app):
         for dropdown in app.netDropdowns: # draw last
             if dropdown.is_open:  # draw open dropdowns on top of everything else
                 dropdown.draw()
+

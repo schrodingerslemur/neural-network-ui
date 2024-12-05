@@ -16,13 +16,13 @@ class CNNNet(nn.Module):
         print('true', dims is None)
         super().__init__()
         # Example input
-        #     "dims": [
-        #     {"layer": "conv", "in_channels": 3, "out_channels": 16, "kernel_size": 3},
-        #     {"layer": "pool", "type": "avg", "kernel_size": 2, "stride": 2},  # Pooling layer
-        #     {"layer": "conv", "in_channels": 16, "out_channels": 32, "kernel_size": 3},
-        #     {"layer": "pool", "type": "max", "kernel_size": 2, "stride": 2}   # Pooling layer
-        #      ]
-        #     "activations": ["relu", ["relu", "relu"], None, "selu"] # len(activations) = len(dims) 
+            # "dims": [
+            # {"layer": "conv", "in_channels": 3, "out_channels": 16, "kernel_size": 3},
+            # {"layer": "pool", "type": "avg", "kernel_size": 2, "stride": 2},  # Pooling layer
+            # {"layer": "conv", "in_channels": 16, "out_channels": 32, "kernel_size": 3},
+            # {"layer": "pool", "type": "max", "kernel_size": 2, "stride": 2}   # Pooling layer
+            #  ]
+            # "activations": ["relu", ["relu", "relu"], None, "selu"] # len(activations) = len(dims) 
         layers = []
 
         for i in range(len(dims)):

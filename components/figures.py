@@ -47,7 +47,6 @@ class Counter:
     
     def increase(self):
         self.parameters["dims"][self.index] += 1
-        self.updateFigures()
 
     def decrease(self):
         if self.parameters["dims"][self.index] > 0:
@@ -55,12 +54,9 @@ class Counter:
         if self.parameters["dims"][self.index] == 0:
             del self.parameters["dims"][self.index]
             del self.parameters["activations"][self.index]
-        self.updateFigures()
 
-    def updateFigures(self):
-        self.app.netFigures, self.app.netButtons, self.app.netDropdowns = mlpFigures(self.app, self.parameters)
-
-def mlpFigures(app, parameters):
+def mlpFigures(app):
+    parameters = app.selectedIcon.parameters
     # Dynamically scale values based on app dimensions
     scale_x = app.width / 1366  # Scale factor for width
     scale_y = app.height / 768  # Scale factor for height
@@ -112,21 +108,12 @@ def mlpFigures(app, parameters):
 
 
 def addRow(app):
-    """
-    Add a new row to the MLP figure.
-    """
     if app.selectedIcon and "dims" in app.selectedIcon.parameters:
         # Add a default value (e.g., 1) to dims and a default activation
         app.selectedIcon.parameters["dims"].append(1)
         app.selectedIcon.parameters["activations"].append(None)
 
-        # Update the figures and controls
-        app.netFigures, app.netButtons, app.netDropdowns = mlpFigures(app, app.selectedIcon.parameters)
-
 def updateActivations(app):
-    """
-    Update the activations in parameters based on the dropdown selections.
-    """
     if app.selectedIcon and "activations" in app.selectedIcon.parameters:
         for i, dropdown in enumerate(app.netDropdowns):
             app.selectedIcon.parameters["activations"][i] = dropdown.selected_option

@@ -1,108 +1,37 @@
 from cmu_graphics import *
 import json
 import base64
+import logging
+import io
 import tkinter as tk
 from tkinter import filedialog
 
 from component_logic.create_logic import createBlocks, createButtons, createIcon
-from component_logic.draw_logic import drawPreview, drawHeader, drawBackground, drawBlocks, drawIcons, drawButtons, drawDropdown, drawSelectedIcon, drawNetFigures, drawTrainWindow
+from component_logic.draw_logic import drawPreview, drawHeader, drawBackground, drawBlocks, drawIcons, drawButtons, drawDropdown, drawSelectedIcon, drawNetFigures, drawTrainWindow, drawEvalWindow
 from component_logic.snap_logic import snapToBottom, snapToTop
 from component_logic.app_logic import resetApp
+from component_logic.submit_logic import submitTrain, submitEval
 
 from components.block import Block
 from components.button import circleButton, dropdownButton
 from components.icon import Icon, CompositeIcon
 from components.circle import Circle # Figures for MLP visualization
-from components.counter import Counter, mlpFigures, updateActivations
+from components.figures import Counter, mlpFigures, updateActivations
 
-from data.upload import uploadInput, uploadLabel, uploadModel, uploadEvalInput
+from util.math_utils import inTriangle
 from util.bounds_utils import calculateWindowBounds
 from util.fix_utils import fixActivations
+
+from log.log import setup_logging # print out loss and activation etc. can use regex
 
 from app.neural_network.net_main import neural_main
 
 def onAppStart(app):
     resetApp(app)
+    app.previousWidth = app.width  # Store the initial width
+    app.previousHeight = app.height  # Store the initial height
+    app.previousSelectedIcon = None
 
-    scale_x = app.width / 1366  # Scale factor for width
-    scale_y = app.height / 768  # Scale factor for height
-
-    # Training dictionary
-    app.train_dict = {"trainer": {"num_epochs": 10, "optim": {"type": None}, "loss": None}}
-
-    # Train window close button
-    app.trainWindowCloseButton = circleButton(
-        int(0 * scale_x), int(0 * scale_y), int(20 * scale_x), 
-        text="X", func=closeTrainWindow, param=app, label=False
-    )
-
-    # Upload buttons
-    app.inputUploadButton = circleButton(
-        int(0 * scale_x), int(0 * scale_y), int(40 * scale_x),
-        text="Upload input data", url='static/upload.webp', func=uploadInput, param=app, label=False
-    )
-    app.labelUploadButton = circleButton(
-        int(0 * scale_x), int(0 * scale_y), int(40 * scale_x),
-        text="Upload label data", url='static/upload.webp', func=uploadLabel, param=app, label=False
-    )
-
-    # Submit button
-    app.trainSubmitButton = circleButton(
-        int(0 * scale_x), int(0 * scale_y), int(40 * scale_x),
-        text="Submit", url='static/submit.png', func=submitTrain, param=app, label=False
-    )
-
-    # Dropdowns
-    app.optimizerDropdown = dropdownButton(
-        int(0 * scale_x), int(0 * scale_y), int(150 * scale_x), int(30 * scale_y),
-        options=app.optimizers, default_option=app.optimizers[0]
-    )
-    app.lossFunctionDropdown = dropdownButton(
-        int(0 * scale_x), int(0 * scale_y), int(150 * scale_x), int(30 * scale_y),
-        options=app.losses, default_option=app.losses[0]
-    )
-
-    # Num epochs input field
-    app.numEpochsInput = "10"
-    app.numEpochsSelected = False
-    app.numEpochsCursorVisible = False  # To toggle the cursor
-
-    # To check whether input/label is uploaded
-    app.inputUploaded = False
-    app.labelUploaded = False
-
-    # counter for cursor blinking
-    app.counter = 0
-
-    # window visibility
-    app.trainWindowVisible = False
-
-    # Eval Window stuff:
-    # Reuse inputUploadButton
-    app.model = None
-    app.eval_dict = {}
-    app.modelUploadButton = circleButton(
-        int(0 * scale_x), int(0 * scale_y), int(40 * scale_x),
-        text="Upload model", url='static/upload.webp', func=uploadModel, param=app, label=False
-    )
-
-    app.evalInputUploadButton = circleButton(
-        int(0 * scale_x), int(0 * scale_y), int(40 * scale_x),
-        text="Upload input data", url='static/upload.webp', func=uploadEvalInput, param=app, label=False
-    )
-
-    app.evalWindowCloseButton = circleButton(
-        int(0 * scale_x), int(0 * scale_y), int(20 * scale_x),
-        text="X", func=closeEvalWindow, param=app, label=False
-    )
-
-    app.evalSubmitButton = circleButton(
-        int(0 * scale_x), int(0 * scale_y), int(40 * scale_x),
-        text="Evaluate", url='static/submit.png', func=submitEval, param=app, label=False
-    )
-    app.evalWindowVisible = False
-    app.evalInputUploaded = False
-    app.modelUploaded = False
 
 def onMousePress(app, mouseX, mouseY):
     if app.trainWindowVisible:
@@ -177,7 +106,7 @@ def onMousePress(app, mouseX, mouseY):
                 # Top block is being dragged, drag the entire composite
                 app.draggedIcon = icon
                 app.draggedIcon.startDrag(mouseX, mouseY)
-                selectIcon(app,icon.icons[0])
+                app.selectedIcon = icon.icons[0]
                 return
             else:
                 # check if non-top block is dragged
@@ -197,13 +126,13 @@ def onMousePress(app, mouseX, mouseY):
                     app.draggedIcon = newComposite
                     app.draggedIcon.startDrag(mouseX, mouseY)
 
-                    selectIcon(app,newComposite.icons[0])
+                    app.selectedIcon = newComposite.icons[0]
                     return
         elif icon.contains(mouseX, mouseY):
             # Single icon drag
             app.draggedIcon = icon
             app.draggedIcon.startDrag(mouseX, mouseY)
-            selectIcon(app,icon)
+            app.selectedIcon = icon
             return
 
     # Check if mouse is over block to create new icon
@@ -213,12 +142,12 @@ def onMousePress(app, mouseX, mouseY):
             app.icons.append(newIcon)
             app.draggedIcon = newIcon
             app.draggedIcon.startDrag(mouseX, mouseY)
-            selectIcon(app,newIcon)
+            app.selectedIcon = newIcon
             return
         
     # button logic
     for button in app.netButtons:
-        if isinstance(button, Counter):
+        if isinstance(button, (Counter, CNNCounter)):
             # Handle Counter buttons
             if button.leftContains(mouseX, mouseY):
                 button.decrease()
@@ -249,18 +178,22 @@ def onMousePress(app, mouseX, mouseY):
     for dropdown in app.netDropdowns:
         selected_option = dropdown.optionContains(mouseX, mouseY)
         if selected_option:
+            print('yenah')
             dropdown.selectOption(selected_option)
             updateActivations(app)
             return
 
     # toggle dropdowns
     for dropdown in app.netDropdowns:
+        print(dropdown)
         if dropdown.contains(mouseX, mouseY):
+            print('yep')
             # Close all other dropdowns first
-            for other in app.netDropdowns:
-                if other is not dropdown:
-                    other.close()
+            # for other in app.netDropdowns:
+            #     if other is not dropdown:
+            #         other.close()
             dropdown.toggle()
+            print(dropdown.is_open)
             return
 
     # clicked elsewhere, close all dropdowns
@@ -377,13 +310,34 @@ def onKeyHold(app, key):
 
 def onStep(app):
     app.counter += 1
-
     if app.counter % 100 == 0:
         print(app.icons)
         if app.mode == 'train':
             print(app.train_dict)
         else:
             print(app.eval_dict)
+    windowResized = (app.width != app.previousWidth or app.height != app.previousHeight)
+
+    # Detect selected icon change
+    selectedIconChanged = (app.selectedIcon != app.previousSelectedIcon)
+
+    # Only update if window is resized or selected icon changes
+    if windowResized or selectedIconChanged:
+        print("Update triggered due to resize or selected icon change.")
+        
+        # Perform update logic here
+        if app.selectedIcon is None:
+            app.netFigures, app.netButtons, app.netDropdowns = [], [], []
+        elif app.selectedIcon.net_type == 'mlp':
+            app.netFigures, app.netButtons, app.netDropdowns = mlpFigures(app)
+        elif app.selectedIcon.net_type == 'cnn':
+            app.netFigures, app.netButtons, app.netDropdowns = cnnFigures(app)
+
+        # Update tracking variables
+        app.previousWidth = app.width
+        app.previousHeight = app.height
+        app.previousSelectedIcon = app.selectedIcon
+
 
     # blinking cursor 
     if app.counter % 15 == 0:
@@ -402,9 +356,9 @@ def redrawAll(app):
 
     # Right-side of screen
     drawSelectedIcon(app)
-    drawNetFigures(app)
+    
     drawDropdown(app)
-
+    drawNetFigures(app)
     # Screen window (when submit is pressed)
     if app.trainWindowVisible:
         drawTrainWindow(app)
@@ -412,130 +366,168 @@ def redrawAll(app):
     if app.evalWindowVisible:
         drawEvalWindow(app)
 
+class CNNCounter:
+    def __init__(self, x, y, parameters, index, key, app):
+        """
+        Counter for managing specific parameters of CNN layers.
+        :param x: X-coordinate of the counter
+        :param y: Y-coordinate of the counter
+        :param parameters: CNN layer parameters
+        :param index: Index of the layer in the dims list
+        :param key: The parameter key to modify (e.g., "in_channels", "kernel_size")
+        :param app: The app object for context
+        """
+        self.x = x
+        self.y = y
+        self.parameters = parameters
+        self.index = index
+        self.key = key
+        self.app = app
 
-def selectIcon(app, icon):
-    app.selectedIcon = icon
-    if app.selectedIcon.net_type == 'mlp':
-        app.netFigures, app.netButtons, app.netDropdowns = mlpFigures(app, icon.parameters) # returnn figures(circles) and buttons
-    else:
-        app.netFigures, app.netButtons, app.netDropdowns = [], [], []
+    def draw(self):
+        current_value = self.parameters["dims"][self.index].get(self.key, 0)
+        drawCircle(self.x, self.y, 15, fill='grey', border='black')
+        drawLabel(str(current_value), self.x, self.y)
 
-def drawEvalWindow(app):
-    """Draw the evaluation window with dynamic scaling."""
-    window_x, window_y, window_width, window_height = calculateWindowBounds(app)
+        # Draw left and right adjustment buttons
+        self.leftDims = [self.x - 40, self.y,
+                         self.x - 20, self.y - 15,
+                         self.x - 20, self.y + 15]
+        
+        self.rightDims = [self.x + 40, self.y,
+                          self.x + 20, self.y - 15,
+                          self.x + 20, self.y + 15]
+        
+        # Left clicker
+        drawPolygon(
+            *self.leftDims,
+            fill='green'
+        )
 
+        # Right clicker
+        drawPolygon(
+            *self.rightDims,
+            fill='green'
+        )
+
+    def leftContains(self, x, y):
+        return inTriangle(x, y, *self.leftDims)
+    
+    def rightContains(self, x, y):
+        return inTriangle(x, y, *self.rightDims)
+    
+    def increase(self):
+        print('yes')
+        # Increase the specific parameter value
+        self.parameters["dims"][self.index][self.key] += 1
+        print(self.parameters)
+
+    def decrease(self):
+        # Decrease the specific parameter value
+        if self.parameters["dims"][self.index][self.key] > 0:
+            self.parameters["dims"][self.index][self.key] -= 1
+        print(self.parameters)
+
+def cnnFigures(app):
+    """
+    Create a visual representation of CNN dimensions with dropdowns and counters.
+    """
+    parameters = app.selectedIcon.parameters
     scale_x = app.width / 1366  # Scale factor for width
     scale_y = app.height / 768  # Scale factor for height
 
-    # Draw window background
-    drawRect(window_x, window_y, window_width, window_height, fill='lightgrey', border='black')
+    center_x = app.width - 200  # Center x position
+    start_y = int(150 * scale_y) + 30  # Start y position for the first layer
 
-    # Draw window close button
-    app.evalWindowCloseButton.x = window_x + window_width - int(30 * scale_x)
-    app.evalWindowCloseButton.y = window_y + int(30 * scale_y)
-    app.evalWindowCloseButton.draw()
+    figures = []
+    buttons = []
+    dropdowns = []
 
-    # Input upload button
-    app.evalInputUploadButton.x = window_x + int(200 * scale_x)
-    app.evalInputUploadButton.y = window_y + int(150 * scale_y)
-    app.evalInputUploadButton.draw()
-    drawLabel("Upload input data",
-              app.evalInputUploadButton.x + int(90 * scale_x),
-              app.evalInputUploadButton.y,
-              align='left', size=int(30 * scale_y), bold=True)
+    # counter = CNNCounter(100,100,parameters, 0, "in_channels", app)
+    for i, layer in enumerate(parameters["dims"]):
+        x = center_x - int(100 * scale_x)  # Centered position for the layer
+        layer_width = int(200 * scale_x)
+        layer_height = int(50 * scale_y)
 
-    if app.evalInputUploaded:
-        drawImage('static/submit.png',
-                  app.evalInputUploadButton.x - int(100 * scale_x),
-                  app.evalInputUploadButton.y,
-                  width=int(30 * scale_x * 2) - 5,
-                  height=int(30 * scale_y * 2) - 5,
-                  align='center')
-
-    # Model upload button
-    app.modelUploadButton.x = window_x + int(200 * scale_x)
-    app.modelUploadButton.y = window_y + int(250 * scale_y)
-    app.modelUploadButton.draw()
-    drawLabel("Upload model",
-              app.modelUploadButton.x + int(90 * scale_x),
-              app.modelUploadButton.y,
-              align='left', size=int(30 * scale_y), bold=True)
-
-    if app.modelUploaded:
-        drawImage('static/submit.png',
-                  app.modelUploadButton.x - int(100 * scale_x),
-                  app.modelUploadButton.y,
-                  width=int(30 * scale_x * 2) - 5,
-                  height=int(30 * scale_y * 2) - 5,
-                  align='center')
-
-    # Eval submit button
-    app.evalSubmitButton.x = window_x + int(200 * scale_x)
-    app.evalSubmitButton.y = window_y + int(350 * scale_y)
-    app.evalSubmitButton.draw()
-    drawLabel("Submit",
-              app.evalSubmitButton.x + int(90 * scale_x),
-              app.evalSubmitButton.y,
-              align='left', size=int(30 * scale_y), bold=True)
-
-
-def submitTrain(app):
-    print("Submit train button pressed.")
-
-    # Train model
-    try:
-        fixActivations(app)
-        json_string = json.dumps(app.train_dict)
-        train_output = neural_main(json_string)
-        train_output = json.loads(train_output)
-        encoded_pickle_data = train_output['pickled_data']
-        pickle_data = base64.b64decode(encoded_pickle_data)
-
-        # tkinter root window (hidden)
-        root = tk.Tk()
-        root.withdraw()  # Hide root window
-
-        # save location in file
-        save_path = filedialog.asksaveasfilename(
-            title="Save Pickle File",
-            defaultextension=".pkl",
-            filetypes=[("Pickle files", "*.pkl"), ("All files", "*.*")],
+        type_dropdown = dropdownButton(
+            x - int(150*scale_x),
+            start_y + int(layer_height/4),
+            120,
+            30,
+            ["conv", "pool", "test"],
+            default_option=layer["layer"]
         )
+        dropdowns.append(type_dropdown)
 
-        if save_path:
-            # save pickl to chosen file
-            with open(save_path, "wb") as f:
-                f.write(pickle_data)
-            print(f"Pickle file saved to {save_path}")
-            app.showMessage(f"Pickle file saved to {save_path}")
-        else:
-            print("Save operation canceled.")
-            app.showMessage("Save operation canceled.")
+        if layer["layer"] == "conv":
+            # Conv layer counters
+            in_channel_counter = CNNCounter(
+                x - int(60 * scale_x), start_y, parameters, i, "in_channels", app)
+            out_channel_counter = CNNCounter(
+                x, start_y, parameters, i, "out_channels", app)
+            kernel_size_counter = CNNCounter(
+                x + int(60 * scale_x), start_y, parameters, i, "kernel_size", app)
 
-    except Exception as e:
-        app.showMessage(f"An error occured: ({e})")
-        print(e)
+            buttons.extend([in_channel_counter, out_channel_counter, kernel_size_counter])
 
-def submitEval(app):
-    print("Submit eval button pressed")
+        elif layer["layer"] == "pool":
+            # Pooling layer type dropdown
+            pool_type_dropdown = dropdownButton(
+                x - int(80 * scale_x),
+                start_y,
+                int(120 * scale_x),
+                int(30 * scale_y),
+                options=["max", "avg"],
+                default_option=layer.get("type", "max")
+            )
+            dropdowns.append(pool_type_dropdown)
+
+            # Pooling layer counters
+            kernel_size_counter = CNNCounter(
+                x, start_y, parameters, i, "kernel_size", app)
+            stride_counter = CNNCounter(
+                x + int(60 * scale_x), start_y, parameters, i, "stride", app)
+
+            buttons.extend([kernel_size_counter, stride_counter])
+
+        # Adjust start_y for the next layer
+        start_y += int(layer_height + 60 * scale_y)
+
+    # Add a button to append a new layer
+    add_layer_button = circleButton(
+        center_x + int(150 * scale_x), 
+        start_y + int(20 * scale_y), 
+        int(30 * scale_x), 
+        text="Add Layer", 
+        url='static/add.png', 
+        func=addLayer, 
+        param=app
+    )
+    buttons.append(add_layer_button)
 
 
-    fixActivations(app)
-    print('eval_dict', app.eval_dict)
-    json_string = json.dumps(app.eval_dict)
-    eval_output = neural_main(json_string)
-    print(eval_output)
-    app.showMessage('evaluation success BORATTTTTTTTTTTTT')
-    # except Exception as e:
-    #     app.showMessage(f"An error occured: ({e})")
-    #     print(e)
-    
-    
-def closeTrainWindow(app):
-    app.trainWindowVisible = False
+    return figures, buttons, dropdowns
 
-def closeEvalWindow(app):
-    app.evalWindowVisible = False
+def addLayer(app):
+    """
+    Add a new layer to the CNN figure.
+    """
+    if app.selectedIcon and "dims" in app.selectedIcon.parameters:
+        # Default to a convolutional layer
+        app.selectedIcon.parameters["dims"].append({
+            "layer": "conv",
+            "in_channels": 3,
+            "out_channels": 16,
+            "kernel_size": 3,
+            "stride": 1,
+            "padding": 0
+        })
+
+        # Refresh the figures
+        app.netFigures, app.netButtons, app.netDropdowns = cnnFigures(app)
+
+
+
 
 def main():
     runApp()

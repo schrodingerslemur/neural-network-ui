@@ -1,10 +1,17 @@
 from cmu_graphics import *
 
 import tkinter as tk
-from component_logic.create_logic import createBlocks, createButtons, createDropdown
+
 from components.icon import CompositeIcon
+from components.button import circleButton, dropdownButton
+from component_logic.create_logic import createBlocks, createButtons, createDropdown
+from component_logic.close_logic import closeEvalWindow, closeTrainWindow
+from component_logic.submit_logic import submitEval, submitTrain
+
+from data.upload import uploadInput, uploadLabel, uploadModel, uploadEvalInput
 from app.neural_network.util.parameters import convert
-# from data.upload import create_ui
+
+
 def get_screen_dimensions():
     root = tk.Tk()
     root.withdraw()
@@ -36,6 +43,87 @@ def resetApp(app):
     app.activations = convert.lists('activation', 'list')
     app.optimizers = convert.lists('optimizer', 'list')
     app.losses = convert.lists('loss', 'list')
+
+    scale_x = app.width / 1366  # Scale factor for width
+    scale_y = app.height / 768  # Scale factor for height
+
+    # Training dictionary
+    app.train_dict = {"trainer": {"num_epochs": 10, "optim": {"type": None}, "loss": None}}
+
+    # Train window close button
+    app.trainWindowCloseButton = circleButton(
+        int(0 * scale_x), int(0 * scale_y), int(20 * scale_x), 
+        text="X", func=closeTrainWindow, param=app, label=False
+    )
+
+    # Upload buttons
+    app.inputUploadButton = circleButton(
+        int(0 * scale_x), int(0 * scale_y), int(40 * scale_x),
+        text="Upload input data", url='static/upload.webp', func=uploadInput, param=app, label=False
+    )
+    app.labelUploadButton = circleButton(
+        int(0 * scale_x), int(0 * scale_y), int(40 * scale_x),
+        text="Upload label data", url='static/upload.webp', func=uploadLabel, param=app, label=False
+    )
+
+    # Submit button
+    app.trainSubmitButton = circleButton(
+        int(0 * scale_x), int(0 * scale_y), int(40 * scale_x),
+        text="Submit", url='static/submit.png', func=submitTrain, param=app, label=False
+    )
+
+    # Dropdowns
+    app.optimizerDropdown = dropdownButton(
+        int(0 * scale_x), int(0 * scale_y), int(150 * scale_x), int(30 * scale_y),
+        options=app.optimizers, default_option=app.optimizers[0]
+    )
+    app.lossFunctionDropdown = dropdownButton(
+        int(0 * scale_x), int(0 * scale_y), int(150 * scale_x), int(30 * scale_y),
+        options=app.losses, default_option=app.losses[0]
+    )
+
+    # Num epochs input field
+    app.numEpochsInput = "10"
+    app.numEpochsSelected = False
+    app.numEpochsCursorVisible = False  # To toggle the cursor
+
+    # To check whether input/label is uploaded
+    app.inputUploaded = False
+    app.labelUploaded = False
+
+    # counter for cursor blinking
+    app.counter = 0
+
+    # window visibility
+    app.trainWindowVisible = False
+
+    # Eval Window stuff:
+    # Reuse inputUploadButton
+    app.model = None
+    app.eval_dict = {}
+    app.modelUploadButton = circleButton(
+        int(0 * scale_x), int(0 * scale_y), int(40 * scale_x),
+        text="Upload model", url='static/upload.webp', func=uploadModel, param=app, label=False
+    )
+
+    app.evalInputUploadButton = circleButton(
+        int(0 * scale_x), int(0 * scale_y), int(40 * scale_x),
+        text="Upload input data", url='static/upload.webp', func=uploadEvalInput, param=app, label=False
+    )
+
+    app.evalWindowCloseButton = circleButton(
+        int(0 * scale_x), int(0 * scale_y), int(20 * scale_x),
+        text="X", func=closeEvalWindow, param=app, label=False
+    )
+
+    app.evalSubmitButton = circleButton(
+        int(0 * scale_x), int(0 * scale_y), int(40 * scale_x),
+        text="Evaluate", url='static/submit.png', func=submitEval, param=app, label=False
+    )
+    app.evalWindowVisible = False
+    app.evalInputUploaded = False
+    app.modelUploaded = False
+    
 
 def submit_func(app): # First submit button (not window submit button)
     for icon in app.icons:

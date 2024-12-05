@@ -100,8 +100,11 @@ if __name__ == "__main__":
         "net2": {
             "type": "cnn",
             "dims": [
-                {"layer": "conv", "in_channels": 2, "out_channels": 16, "kernel_size": 3}
-                ],
+            {"layer": "conv", "in_channels": 3, "out_channels": 16, "kernel_size": 3},
+            {"layer": "pool", "type": "avg", "kernel_size": 2, "stride": 2},  # Pooling layer
+            {"layer": "conv", "in_channels": 16, "out_channels": 32, "kernel_size": 3},
+            {"layer": "pool", "type": "max", "kernel_size": 2, "stride": 2} 
+            ],
             "activations": ["relu", ["relu", "relu"], None, "selu"]
         },
         "trainer": {

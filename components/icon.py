@@ -15,6 +15,23 @@ class Icon(Block):
         if self.net_type == 'mlp':
             self.parameters["dims"] = [2, 64]
             self.parameters["activations"] = [None, None]
+        elif self.net_type == 'cnn':
+            self.parameters["dims"] = [{
+                                    "layer": "conv",
+                                    "in_channels": 3,
+                                    "out_channels": 16,
+                                    "kernel_size": 3,
+                                    "stride": 1,
+                                    "padding": 0
+                                }]
+            self.parameters["activations"] = [None]
+        elif self.net_type == 'gnn':
+            pass
+        elif self.net_type == 'rnn':
+            pass
+        elif self.net_type == 'transformer':
+            pass
+
 
     def __repr__(self):
         return self.text
