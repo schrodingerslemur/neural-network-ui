@@ -199,3 +199,159 @@ def fixActivationIndex(app, i):
             if dropdown.options != [None] + app.activations:
                 count += 1
     return i - count
+
+class CNNCounter:
+    def __init__(self, x, y, parameters, index, key, app):
+        self.x = x
+        self.y = y
+        self.parameters = parameters
+        self.index = index
+        self.key = key
+        self.app = app
+
+    def draw(self):
+        current_value = self.parameters["dims"][self.index].get(self.key, 0)
+        drawCircle(self.x, self.y, 15, fill='grey', border='black')
+        drawLabel(str(current_value), self.x, self.y)
+        drawLabel(self.key, self.x, self.y + 25, size=10)
+
+        # Draw left and right adjustment buttons
+        self.leftDims = [self.x - 40, self.y,
+                         self.x - 20, self.y - 15,
+                         self.x - 20, self.y + 15]
+        
+        self.rightDims = [self.x + 40, self.y,
+                          self.x + 20, self.y - 15,
+                          self.x + 20, self.y + 15]
+        
+        # Left clicker
+        drawPolygon(
+            *self.leftDims,
+            fill='green'
+        )
+
+        # Right clicker
+        drawPolygon(
+            *self.rightDims,
+            fill='green'
+        )
+
+    def leftContains(self, x, y):
+        return inTriangle(x, y, *self.leftDims)
+    
+    def rightContains(self, x, y):
+        return inTriangle(x, y, *self.rightDims)
+    
+    def increase(self):
+        # Increase the specific parameter value
+        self.parameters["dims"][self.index][self.key] += 1
+
+    def decrease(self):
+        # Decrease the specific parameter value
+        if self.parameters["dims"][self.index][self.key] > 0:
+            self.parameters["dims"][self.index][self.key] -= 1
+
+def cnnFigures(app):
+    parameters = app.selectedIcon.parameters
+    scale_x = app.width / 1366  
+    scale_y = app.height / 768  
+
+    center_x = app.width - 200  
+    start_y = int(150 * scale_y) + 30  
+
+    figures = []
+    buttons = []
+    dropdowns = []
+
+    # counter = CNNCounter(100,100,parameters, 0, "in_channels", app)
+    for i, layer in enumerate(parameters["dims"]):
+        x = center_x - int(50 * scale_x)  # Centered position for the layer
+        layer_width = int(200 * scale_x)
+        layer_height = int(50 * scale_y)
+
+        type_dropdown = dropdownButton(
+            x - int(170*scale_x),
+            start_y-15,
+            int(80*scale_x),
+            30,
+            ["conv", "pool"],
+            default_option=layer["layer"]
+        )
+        dropdowns.append(type_dropdown)
+
+        if layer["layer"] == "conv":
+            # Conv layer counters
+            in_channel_counter = CNNCounter(
+                x - int(30 * scale_x), start_y, parameters, i, "in_channels", app)
+            out_channel_counter = CNNCounter(
+                x + int(80 * scale_x), start_y, parameters, i, "out_channels", app)
+            kernel_size_counter = CNNCounter(
+                x + int(190 * scale_x), start_y, parameters, i, "kernel_size", app)
+
+            buttons.extend([in_channel_counter, out_channel_counter, kernel_size_counter])
+
+        elif layer["layer"] == "pool":
+            # Pooling layer type dropdown
+            pool_type_dropdown = dropdownButton(
+                x - int(80 * scale_x),
+                start_y - 15,
+                int(80 * scale_x),
+                30,
+                options=["max", "avg"],
+                default_option=layer.get("type", "max")
+            )
+            dropdowns.append(pool_type_dropdown)
+
+            # Pooling layer counters
+            kernel_size_counter = CNNCounter(
+                x + int(80 * scale_x), start_y, parameters, i, "kernel_size", app)
+            stride_counter = CNNCounter(
+                x + int(190 * scale_x), start_y, parameters, i, "stride", app)
+
+            buttons.extend([kernel_size_counter, stride_counter])
+
+        activation_dropdown = dropdownButton(
+            x + int(100 * scale_x),
+            start_y + int(45 * scale_y),
+            int(90 * scale_x),
+            20,
+            options=[None] + app.activations,  # Example activations: ["ReLU", "Sigmoid", "Tanh"]
+            default_option=parameters["activations"][i]  # Default activation from parameters
+        )
+        dropdowns.append(activation_dropdown)
+        # Adjust start_y for the next layer
+        start_y += int(layer_height + 45 * scale_y)
+
+    # Add a button to append a new layer
+    add_layer_button = circleButton(
+        center_x + int(150 * scale_x), 
+        start_y + int(40 * scale_y), 
+        int(30 * scale_x), 
+        text="Add Layer", 
+        url='static/add.png', 
+        func=addLayer, 
+        param=app
+    )
+    buttons.append(add_layer_button)
+
+
+    return figures, buttons, dropdowns
+
+def addLayer(app):
+    """
+    Add a new layer to the CNN figure.
+    """
+    if app.selectedIcon and "dims" in app.selectedIcon.parameters:
+        # Default to a convolutional layer
+        app.selectedIcon.parameters["dims"].append({
+            "layer": "conv",
+            "in_channels": 3,
+            "out_channels": 16,
+            "kernel_size": 3,
+            "stride": 1,
+            "padding": 0
+        })
+        app.selectedIcon.parameters["activations"].append(None)
+        # Refresh 
+        app.netFigures, app.netButtons, app.netDropdowns = cnnFigures(app)
+
