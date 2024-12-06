@@ -10,10 +10,7 @@ def createBlocks():
         Block(33,90,180,40,text='Input',type='input'),
         Block(33,150,180,40,text='Output',type='output'),
         Block(33,210,180,40,text='MLP'),
-        Block(33,270,180,40,text='CNN'),
-        Block(33,330,180,40,text='RNN'),
-        Block(33,390,180,40,text='GNN'),
-        Block(33,450,180,40,text='Transformer')
+        Block(33,270,180,40,text='CNN')
     ]
 
 def createButtons(app, reset_func):

@@ -22,13 +22,12 @@ from util.math_utils import inTriangle
 from util.bounds_utils import calculateWindowBounds
 from util.fix_utils import fixActivations
 
-from log.log import setup_logging 
 from app.neural_network.net_main import neural_main
 
 def onAppStart(app):
     resetApp(app)
-    app.previousWidth = app.width  # Store the initial width
-    app.previousHeight = app.height  # Store the initial height
+    app.previousWidth = app.width  
+    app.previousHeight = app.height  
     app.previousSelectedIcon = None
 
     app.minWidth = 900

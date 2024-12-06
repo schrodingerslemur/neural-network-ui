@@ -21,14 +21,13 @@ def resetApp(app):
     screen_width, screen_height = get_screen_dimensions()
     app.width = int(screen_width*0.8)
     app.height = int(screen_height*0.8)
-    # app.width, app.height = 1366, 768
 
     app.blocks = createBlocks() 
     app.submit = submit_func
     app.buttons = createButtons(app, resetApp)
     app.dropdowns = createDropdown(app)
     app.mode = "train"
-    app.icons = [] # starts empty
+    app.icons = [] 
 
     app.draggedIcon = None
     app.selectedIcon = None
@@ -44,8 +43,8 @@ def resetApp(app):
     app.optimizers = convert.lists('optimizer', 'list')
     app.losses = convert.lists('loss', 'list')
 
-    scale_x = app.width / 1366  # Scale factor for width
-    scale_y = app.height / 768  # Scale factor for height
+    scale_x = app.width / 1366  
+    scale_y = app.height / 768  
 
     # Training dictionary
     app.train_dict = {"trainer": {"num_epochs": 10, "optim": {"type": None}, "loss": None}}
@@ -56,7 +55,6 @@ def resetApp(app):
         text="X", func=closeTrainWindow, param=app, label=False
     )
 
-    # Upload buttons
     app.inputUploadButton = circleButton(
         int(0 * scale_x), int(0 * scale_y), int(40 * scale_x),
         text="Upload input data", url='static/upload.webp', func=uploadInput, param=app, label=False
@@ -66,13 +64,11 @@ def resetApp(app):
         text="Upload label data", url='static/upload.webp', func=uploadLabel, param=app, label=False
     )
 
-    # Submit button
     app.trainSubmitButton = circleButton(
         int(0 * scale_x), int(0 * scale_y), int(40 * scale_x),
         text="Submit", url='static/submit.png', func=submitTrain, param=app, label=False
     )
 
-    # Dropdowns
     app.optimizerDropdown = dropdownButton(
         int(0 * scale_x), int(0 * scale_y), int(150 * scale_x), int(30 * scale_y),
         options=app.optimizers, default_option=app.optimizers[0]
@@ -82,23 +78,16 @@ def resetApp(app):
         options=app.losses, default_option=app.losses[0]
     )
 
-    # Num epochs input field
     app.numEpochsInput = "10"
     app.numEpochsSelected = False
     app.numEpochsCursorVisible = False  # To toggle the cursor
 
-    # To check whether input/label is uploaded
     app.inputUploaded = False
     app.labelUploaded = False
 
-    # counter for cursor blinking
     app.counter = 0
-
-    # window visibility
     app.trainWindowVisible = False
 
-    # Eval Window stuff:
-    # Reuse inputUploadButton
     app.model = None
     app.eval_dict = {}
     app.modelUploadButton = circleButton(
@@ -190,7 +179,6 @@ def submit_func(app): # First submit button (not window submit button)
         # update eval_dict with app.model!!!!
         for i, net in enumerate(nets):
             eval_dict[f"net{i+1}"] = net.parameters
-
-        print(eval_dict)
+            
         app.evalWindowVisible = True
         app.eval_dict = eval_dict

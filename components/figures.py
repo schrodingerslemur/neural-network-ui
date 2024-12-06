@@ -57,7 +57,7 @@ class Counter:
 
 def mlpFigures(app):
     parameters = app.selectedIcon.parameters
-    # Dynamically scale values based on app dimensions
+    # Scale
     scale_x = app.width / 1366  # Scale factor for width
     scale_y = app.height / 768  # Scale factor for height
 
@@ -109,7 +109,6 @@ def mlpFigures(app):
 
 def addRow(app):
     if app.selectedIcon and "dims" in app.selectedIcon.parameters:
-        # Add a default value (e.g., 1) to dims and a default activation
         app.selectedIcon.parameters["dims"].append(1)
         app.selectedIcon.parameters["activations"].append(None)
         app.netFigures, app.netButtons, app.netDropdowns = mlpFigures(app)
@@ -136,9 +135,6 @@ def updateType(app):
             app.selectedIcon.parameters["dims"][i]["type"] = dropdown.selected_option
 
 def updateLayer(app):
-    """
-    Updates the layer type and resets parameters, then refreshes the UI.
-    """
     for i, dropdown in enumerate(app.netDropdowns):
         if dropdown.selected_option in ["conv", "pool"]:
             print(app.selectedIcon.parameters["dims"])
@@ -167,9 +163,6 @@ def updateLayer(app):
                     "stride": 2
                 }
             
-            # Refresh UI elements to reflect the updated parameters
-
-
 def fixLayerIndex(app,i):
     count = 0
     for index, dropdown in enumerate(app.netDropdowns):
@@ -263,9 +256,8 @@ def cnnFigures(app):
     buttons = []
     dropdowns = []
 
-    # counter = CNNCounter(100,100,parameters, 0, "in_channels", app)
     for i, layer in enumerate(parameters["dims"]):
-        x = center_x - int(50 * scale_x)  # Centered position for the layer
+        x = center_x - int(50 * scale_x)  # Centered position for layer
         layer_width = int(200 * scale_x)
         layer_height = int(50 * scale_y)
 
@@ -280,7 +272,7 @@ def cnnFigures(app):
         dropdowns.append(type_dropdown)
 
         if layer["layer"] == "conv":
-            # Conv layer counters
+            # conv layer counters
             in_channel_counter = CNNCounter(
                 x - int(30 * scale_x), start_y, parameters, i, "in_channels", app)
             out_channel_counter = CNNCounter(
@@ -291,7 +283,7 @@ def cnnFigures(app):
             buttons.extend([in_channel_counter, out_channel_counter, kernel_size_counter])
 
         elif layer["layer"] == "pool":
-            # Pooling layer type dropdown
+            # pooling layer type dropdown
             pool_type_dropdown = dropdownButton(
                 x - int(80 * scale_x),
                 start_y - 15,
@@ -302,7 +294,7 @@ def cnnFigures(app):
             )
             dropdowns.append(pool_type_dropdown)
 
-            # Pooling layer counters
+            # pooling layer counters
             kernel_size_counter = CNNCounter(
                 x + int(80 * scale_x), start_y, parameters, i, "kernel_size", app)
             stride_counter = CNNCounter(
@@ -315,14 +307,14 @@ def cnnFigures(app):
             start_y + int(45 * scale_y),
             int(90 * scale_x),
             20,
-            options=[None] + app.activations,  # Example activations: ["ReLU", "Sigmoid", "Tanh"]
-            default_option=parameters["activations"][i]  # Default activation from parameters
+            options=[None] + app.activations,  
+            default_option=parameters["activations"][i]  
         )
         dropdowns.append(activation_dropdown)
-        # Adjust start_y for the next layer
+  
         start_y += int(layer_height + 45 * scale_y)
 
-    # Add a button to append a new layer
+    # append  new layer
     add_layer_button = circleButton(
         center_x + int(150 * scale_x), 
         start_y + int(40 * scale_y), 
@@ -338,9 +330,6 @@ def cnnFigures(app):
     return figures, buttons, dropdowns
 
 def addLayer(app):
-    """
-    Add a new layer to the CNN figure.
-    """
     if app.selectedIcon and "dims" in app.selectedIcon.parameters:
         # Default to a convolutional layer
         app.selectedIcon.parameters["dims"].append({

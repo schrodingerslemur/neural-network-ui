@@ -60,10 +60,9 @@ def drawTrainWindow(app):
     scale_x = app.width / 1366  # Scale factor for width
     scale_y = app.height / 768  # Scale factor for height
 
-    # Draw window background
+    # Window background
     drawRect(window_x, window_y, window_width, window_height, fill='lightgrey', border='black')
 
-    # Draw window close button
     app.trainWindowCloseButton.x = window_x + window_width - int(30 * scale_x)
     app.trainWindowCloseButton.y = window_y + int(30 * scale_y)
     app.trainWindowCloseButton.draw()
@@ -129,7 +128,7 @@ def drawTrainWindow(app):
         bold=True
     )
 
-    # Draw dropdowns
+    # Dropdowns
     app.optimizerDropdown.x = app.inputUploadButton.x + int(450 * scale_x)
     app.optimizerDropdown.y = app.inputUploadButton.y + int(10 * scale_y)
     app.lossFunctionDropdown.x = app.labelUploadButton.x + int(450 * scale_x)
@@ -225,16 +224,14 @@ def drawTrainWindow(app):
         )
 
 def drawEvalWindow(app):
-    """Draw the evaluation window with dynamic scaling."""
     window_x, window_y, window_width, window_height = calculateWindowBounds(app)
 
     scale_x = app.width / 1366  # Scale factor for width
     scale_y = app.height / 768  # Scale factor for height
 
-    # Draw window background
+    # Background
     drawRect(window_x, window_y, window_width, window_height, fill='lightgrey', border='black')
 
-    # Draw window close button
     app.evalWindowCloseButton.x = window_x + window_width - int(30 * scale_x)
     app.evalWindowCloseButton.y = window_y + int(30 * scale_y)
     app.evalWindowCloseButton.draw()
