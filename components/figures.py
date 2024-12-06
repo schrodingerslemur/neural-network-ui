@@ -112,6 +112,7 @@ def addRow(app):
         # Add a default value (e.g., 1) to dims and a default activation
         app.selectedIcon.parameters["dims"].append(1)
         app.selectedIcon.parameters["activations"].append(None)
+        app.netFigures, app.netButtons, app.netDropdowns = mlpFigures(app)
 
 def updateActivations(app):
     if app.selectedIcon.net_type == 'mlp':

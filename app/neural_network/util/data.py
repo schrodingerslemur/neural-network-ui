@@ -4,6 +4,8 @@ import pandas as pd
 import re
 # Changes any datatype to tensor
 def data_convert(d1, d2): # input_data and label
+    if d2 is None:
+        return convert(d1)
     return convert(d1), convert(d2)
 
 def convert(d):

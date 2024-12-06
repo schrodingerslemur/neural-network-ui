@@ -63,11 +63,7 @@ def main_eval(neural_dict):
     # Initialize networks and evaluation data
     networks = create_network_list(neural_dict)
     eval_dict = get_eval_dict(neural_dict)          # ['input', 'label', 'state']
-    input_data, label = data_convert(eval_dict['input'], eval_dict['label'])
-
-    # Assertions
-    assertions.double(input_data, label)
-    assertions.data(neural_dict, input_data, label)
+    input_data= data_convert(eval_dict['input'], None)
 
     # Initialize network and evaluate
     neural_net = COMPnet(networks)

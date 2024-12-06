@@ -391,15 +391,6 @@ def redrawAll(app):
 
 class CNNCounter:
     def __init__(self, x, y, parameters, index, key, app):
-        """
-        Counter for managing specific parameters of CNN layers.
-        :param x: X-coordinate of the counter
-        :param y: Y-coordinate of the counter
-        :param parameters: CNN layer parameters
-        :param index: Index of the layer in the dims list
-        :param key: The parameter key to modify (e.g., "in_channels", "kernel_size")
-        :param app: The app object for context
-        """
         self.x = x
         self.y = y
         self.parameters = parameters
