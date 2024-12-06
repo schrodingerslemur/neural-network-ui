@@ -293,9 +293,9 @@ def drawNetFigures(app):
         for button in app.netButtons:
             button.draw()
         for dropdown in app.netDropdowns:
-            if not dropdown.is_open:  # draw only closed dropdowns
+            if not dropdown.is_open:
                 dropdown.draw()
-        for dropdown in app.netDropdowns: # draw last
-            if dropdown.is_open:  # draw open dropdowns on top of everything else
+        for dropdown in app.netDropdowns: 
+            if dropdown.is_open:  
                 dropdown.draw()
 

@@ -114,6 +114,87 @@ def addRow(app):
         app.selectedIcon.parameters["activations"].append(None)
 
 def updateActivations(app):
-    if app.selectedIcon and "activations" in app.selectedIcon.parameters:
+    if app.selectedIcon.net_type == 'mlp':
         for i, dropdown in enumerate(app.netDropdowns):
-            app.selectedIcon.parameters["activations"][i] = dropdown.selected_option
+            if app.selectedIcon and "activations" in app.selectedIcon.parameters:
+                app.selectedIcon.parameters["activations"][i] = dropdown.selected_option
+    else:
+        for i, dropdown in enumerate(app.netDropdowns):
+            if dropdown.selected_option in [None] + app.activations:
+                print('yes')
+                print('pre', i)
+                i = fixActivationIndex(app, i)
+                print('post', i)
+                app.selectedIcon.parameters["activations"][i] = dropdown.selected_option
+                print(app.selectedIcon.parameters)
+
+def updateType(app):
+    for i, dropdown in enumerate(app.netDropdowns):
+        if dropdown.selected_option in ["max", "avg"]:
+            i = fixTypeIndex(app, i)
+            app.selectedIcon.parameters["dims"][i]["type"] = dropdown.selected_option
+
+def updateLayer(app):
+    """
+    Updates the layer type and resets parameters, then refreshes the UI.
+    """
+    for i, dropdown in enumerate(app.netDropdowns):
+        if dropdown.selected_option in ["conv", "pool"]:
+            print(app.selectedIcon.parameters["dims"])
+            print('og', i)
+            i = fixLayerIndex(app, i)  # Adjust index to handle layer type dropdowns
+            print('fixed', i)
+            
+            # Update the layer type in parameters
+            app.selectedIcon.parameters["dims"][i]["layer"] = dropdown.selected_option
+            
+            # Reset parameters based on the selected layer type
+            if dropdown.selected_option == 'conv':
+                app.selectedIcon.parameters["dims"][i] = {
+                    "layer": "conv",
+                    "in_channels": 3,
+                    "out_channels": 16,
+                    "kernel_size": 3,
+                    "stride": 1,
+                    "padding": 0
+                }
+            elif dropdown.selected_option == 'pool':
+                app.selectedIcon.parameters["dims"][i] = {
+                    "layer": "pool",
+                    "type": "max",
+                    "kernel_size": 2,
+                    "stride": 2
+                }
+            
+            # Refresh UI elements to reflect the updated parameters
+
+
+def fixLayerIndex(app,i):
+    count = 0
+    for index, dropdown in enumerate(app.netDropdowns):
+        if index == i:
+            break
+        else:
+            if dropdown.options != ["conv", "pool"]:
+                count += 1
+    return i - count
+
+def fixTypeIndex(app, i): # for "max", "avg"
+    count = 0
+    for index, dropdown in enumerate(app.netDropdowns):
+        if index == i:
+            break
+        else:
+            if dropdown.options != ["max", "avg"]:
+                count += 1
+    return i - count
+
+def fixActivationIndex(app, i):
+    count = 0
+    for index, dropdown in enumerate(app.netDropdowns):
+        if index == i:
+            break
+        else:
+            if dropdown.options != [None] + app.activations:
+                count += 1
+    return i - count

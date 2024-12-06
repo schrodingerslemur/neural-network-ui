@@ -16,7 +16,7 @@ from components.block import Block
 from components.button import circleButton, dropdownButton
 from components.icon import Icon, CompositeIcon
 from components.circle import Circle # Figures for MLP visualization
-from components.figures import Counter, mlpFigures, updateActivations
+from components.figures import Counter, mlpFigures, updateActivations, updateLayer, updateType
 
 from util.math_utils import inTriangle
 from util.bounds_utils import calculateWindowBounds
@@ -31,6 +31,11 @@ def onAppStart(app):
     app.previousWidth = app.width  # Store the initial width
     app.previousHeight = app.height  # Store the initial height
     app.previousSelectedIcon = None
+
+    app.minWidth = 900
+    app.minHeight = 600
+    app.maxWidth = 1300
+    app.maxHeight = 800
 
 
 def onMousePress(app, mouseX, mouseY):
@@ -54,9 +59,9 @@ def onMousePress(app, mouseX, mouseY):
         num_epochs_x = window_x + 650
         num_epochs_y = window_y + 350
         if num_epochs_x <= mouseX <= num_epochs_x + 150 and num_epochs_y <= mouseY <= num_epochs_y + 30:
-            app.numEpochsSelected = True  # Field is selected
+            app.numEpochsSelected = True  
         else:
-            app.numEpochsSelected = False  # Deselect field if clicked elsewhere
+            app.numEpochsSelected = False  
 
         # Handle dropdowns
         selected_optimizer = app.optimizerDropdown.optionContains(mouseX, mouseY)
@@ -161,7 +166,6 @@ def onMousePress(app, mouseX, mouseY):
                 button.pressed()
                 return
             
-    # header dropdown
     for dropdown in app.dropdowns:
         selected_option = dropdown.optionContains(mouseX, mouseY)
         if selected_option:
@@ -173,27 +177,32 @@ def onMousePress(app, mouseX, mouseY):
         if dropdown.contains(mouseX, mouseY):
             dropdown.toggle()
             return
-    
-        
+
     for dropdown in app.netDropdowns:
         selected_option = dropdown.optionContains(mouseX, mouseY)
         if selected_option:
-            print('yenah')
             dropdown.selectOption(selected_option)
-            updateActivations(app)
+            if app.selectedIcon.net_type == 'mlp':
+                updateActivations(app)
+            elif app.selectedIcon.net_type == 'cnn':
+                if dropdown.options == ['conv', 'pool']:
+                    updateLayer(app)
+                    app.netFigures, app.netButtons, app.netDropdowns = cnnFigures(app)
+                elif dropdown.options == [None]+ app.activations:
+                    print('here')
+                    updateActivations(app)
+                else:
+                    updateType(app)
             return
 
     # toggle dropdowns
     for dropdown in app.netDropdowns:
-        print(dropdown)
         if dropdown.contains(mouseX, mouseY):
-            print('yep')
             # Close all other dropdowns first
-            # for other in app.netDropdowns:
-            #     if other is not dropdown:
-            #         other.close()
+            for other in app.netDropdowns:
+                if other is not dropdown:
+                    other.close()
             dropdown.toggle()
-            print(dropdown.is_open)
             return
 
     # clicked elsewhere, close all dropdowns
@@ -311,13 +320,24 @@ def onKeyHold(app, key):
 def onStep(app):
     app.counter += 1
     if app.counter % 100 == 0:
-        print(app.icons)
+        if app.selectedIcon is not None:
+            print(app.selectedIcon.parameters)
         if app.mode == 'train':
             print(app.train_dict)
         else:
             print(app.eval_dict)
-    windowResized = (app.width != app.previousWidth or app.height != app.previousHeight)
 
+    if app.width < app.minWidth:
+        app.width = app.minWidth
+    elif app.width > app.maxWidth:
+        app.width = app.maxWidth
+
+    if app.height < app.minHeight:
+        app.height = app.minHeight
+    elif app.height > app.maxWidth:
+        app.width = app.maxWidth
+
+    windowResized = (app.width != app.previousWidth or app.height != app.previousHeight)
     # Detect selected icon change
     selectedIconChanged = (app.selectedIcon != app.previousSelectedIcon)
 
@@ -337,6 +357,8 @@ def onStep(app):
         app.previousWidth = app.width
         app.previousHeight = app.height
         app.previousSelectedIcon = app.selectedIcon
+        if app.selectedIcon is not None:
+            app.previousParameters = app.selectedIcon.parameters.copy()
 
 
     # blinking cursor 
@@ -358,7 +380,8 @@ def redrawAll(app):
     drawSelectedIcon(app)
     
     drawDropdown(app)
-    drawNetFigures(app)
+    if app.selectedIcon is not None and app.selectedIcon.net_type in ['mlp', 'cnn']:
+        drawNetFigures(app)
     # Screen window (when submit is pressed)
     if app.trainWindowVisible:
         drawTrainWindow(app)
@@ -388,6 +411,7 @@ class CNNCounter:
         current_value = self.parameters["dims"][self.index].get(self.key, 0)
         drawCircle(self.x, self.y, 15, fill='grey', border='black')
         drawLabel(str(current_value), self.x, self.y)
+        drawLabel(self.key, self.x, self.y + 25, size=10)
 
         # Draw left and right adjustment buttons
         self.leftDims = [self.x - 40, self.y,
@@ -417,16 +441,13 @@ class CNNCounter:
         return inTriangle(x, y, *self.rightDims)
     
     def increase(self):
-        print('yes')
         # Increase the specific parameter value
         self.parameters["dims"][self.index][self.key] += 1
-        print(self.parameters)
 
     def decrease(self):
         # Decrease the specific parameter value
         if self.parameters["dims"][self.index][self.key] > 0:
             self.parameters["dims"][self.index][self.key] -= 1
-        print(self.parameters)
 
 def cnnFigures(app):
     """
@@ -445,16 +466,16 @@ def cnnFigures(app):
 
     # counter = CNNCounter(100,100,parameters, 0, "in_channels", app)
     for i, layer in enumerate(parameters["dims"]):
-        x = center_x - int(100 * scale_x)  # Centered position for the layer
+        x = center_x - int(50 * scale_x)  # Centered position for the layer
         layer_width = int(200 * scale_x)
         layer_height = int(50 * scale_y)
 
         type_dropdown = dropdownButton(
-            x - int(150*scale_x),
-            start_y + int(layer_height/4),
-            120,
+            x - int(170*scale_x),
+            start_y-15,
+            int(80*scale_x),
             30,
-            ["conv", "pool", "test"],
+            ["conv", "pool"],
             default_option=layer["layer"]
         )
         dropdowns.append(type_dropdown)
@@ -462,11 +483,11 @@ def cnnFigures(app):
         if layer["layer"] == "conv":
             # Conv layer counters
             in_channel_counter = CNNCounter(
-                x - int(60 * scale_x), start_y, parameters, i, "in_channels", app)
+                x - int(30 * scale_x), start_y, parameters, i, "in_channels", app)
             out_channel_counter = CNNCounter(
-                x, start_y, parameters, i, "out_channels", app)
+                x + int(80 * scale_x), start_y, parameters, i, "out_channels", app)
             kernel_size_counter = CNNCounter(
-                x + int(60 * scale_x), start_y, parameters, i, "kernel_size", app)
+                x + int(190 * scale_x), start_y, parameters, i, "kernel_size", app)
 
             buttons.extend([in_channel_counter, out_channel_counter, kernel_size_counter])
 
@@ -474,9 +495,9 @@ def cnnFigures(app):
             # Pooling layer type dropdown
             pool_type_dropdown = dropdownButton(
                 x - int(80 * scale_x),
-                start_y,
-                int(120 * scale_x),
-                int(30 * scale_y),
+                start_y - 15,
+                int(80 * scale_x),
+                30,
                 options=["max", "avg"],
                 default_option=layer.get("type", "max")
             )
@@ -484,19 +505,28 @@ def cnnFigures(app):
 
             # Pooling layer counters
             kernel_size_counter = CNNCounter(
-                x, start_y, parameters, i, "kernel_size", app)
+                x + int(80 * scale_x), start_y, parameters, i, "kernel_size", app)
             stride_counter = CNNCounter(
-                x + int(60 * scale_x), start_y, parameters, i, "stride", app)
+                x + int(190 * scale_x), start_y, parameters, i, "stride", app)
 
             buttons.extend([kernel_size_counter, stride_counter])
 
+        activation_dropdown = dropdownButton(
+            x + int(100 * scale_x),
+            start_y + int(45 * scale_y),
+            int(90 * scale_x),
+            20,
+            options=[None] + app.activations,  # Example activations: ["ReLU", "Sigmoid", "Tanh"]
+            default_option=parameters["activations"][i]  # Default activation from parameters
+        )
+        dropdowns.append(activation_dropdown)
         # Adjust start_y for the next layer
-        start_y += int(layer_height + 60 * scale_y)
+        start_y += int(layer_height + 45 * scale_y)
 
     # Add a button to append a new layer
     add_layer_button = circleButton(
         center_x + int(150 * scale_x), 
-        start_y + int(20 * scale_y), 
+        start_y + int(40 * scale_y), 
         int(30 * scale_x), 
         text="Add Layer", 
         url='static/add.png', 
@@ -522,7 +552,7 @@ def addLayer(app):
             "stride": 1,
             "padding": 0
         })
-
+        app.selectedIcon.parameters["activations"].append(None)
         # Refresh the figures
         app.netFigures, app.netButtons, app.netDropdowns = cnnFigures(app)
 
