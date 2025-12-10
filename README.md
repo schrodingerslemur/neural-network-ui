@@ -12,12 +12,12 @@ It provides a block-based interface where users can drag, drop, and arrange visu
 ```bash
 mv cmu_graphics neural-network-ui/cmu_graphics
 ```
-5) Install library requirements
+4) Install library requirements
 ```bash
 cd neural-network-ui
 pip install -r requirements.txt
 ```
-4) Run and open GUI
+5) Run and open GUI
 ```bash
 cd src
 python main.py
