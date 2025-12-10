@@ -8,7 +8,11 @@ It provides a block-based interface where users can drag, drop, and arrange visu
 ## Installation and Usage
 1) Download CMU Graphics from this [link](https://academy.cs.cmu.edu/desktop).
 2) Clone this repository.
-3) Install library requirements
+3) Move the CMU graphics folder into the repository
+```bash
+mv cmu_graphics neural-network-ui/cmu_graphics
+```
+5) Install library requirements
 ```bash
 cd neural-network-ui
 pip install -r requirements.txt
