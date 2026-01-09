@@ -10,7 +10,7 @@ It provides a block-based interface where users can drag, drop, and arrange visu
 2) Clone this repository.
 3) Move the CMU graphics folder into the repository
 ```bash
-mv cmu_graphics neural-network-ui/cmu_graphics
+mv <path/to/cmu_graphics> neural-network-ui/.
 ```
 4) Install library requirements
 ```bash
